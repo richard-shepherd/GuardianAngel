@@ -1,36 +1,44 @@
 <!DOCTYPE html>
-<!--
- Guardian Angel
- --------------
- Crash detection and lean-angle measurement for motorcycles.
-
- Crash detection
- ---------------
- If the angle is greater than a limit (say 60 degrees) for more than a
- set period of time (say 5 seconds), we take this to mean that the bike
- has fallen over or crashed.
-
- In this case we send a text to specified numbers saying that the bike has
- crashed and giving a link to Google maps pointing to the location.
-
- Lean angle measurement
- ----------------------
- For each trip we record the maximum and minimum lean angle. At the end of the
- trip you can see this, along with where they occurred.
--->
 <html>
-    <head>
-        <meta charset="utf-8" />
-        <meta name="format-detection" content="telephone=no" />
-        <meta name="msapplication-tap-highlight" content="no" />
+<head lang="en">
+    <meta charset="UTF-8">
 
-        <!-- WARNING: for iOS 7, remove the width=device-width and height=device-height attributes. See https://issues.apache.org/jira/browse/CB-4323 -->
-        <meta name="viewport" content="user-scalable=no, initial-scale=1, maximum-scale=1, minimum-scale=1, width=device-width, height=device-height" />
-        <title>Guardian Angel</title>
-    </head>
-    <body>
+    <!-- Javascript libraries loaded in head -->
+    <script src="jslibs/jquery/jquery-2.1.4.min.js"></script>
+
+    <title>Guardian Angel - Loading</title>
+</head>
+<body>
+    <img src="img/angel.jpg">
 
 
-        <script type="text/javascript" src="cordova.js"></script>
-    </body>
+    <script src="cordova.js"></script>
+    <script>
+        <!-- We show the splash screen until PhoneGap is initialized, and for at least two seconds -->
+        var timeoutEvent = $.Deferred();
+        var phonegapReadyEvent = $.Deferred();
+
+        // We wait for PhoneGap...
+        if (navigator.userAgent.match(/(iPhone|iPod|iPad|Android|BlackBerry|IEMobile)/)) {
+            // We are running on a device, so we need to wait for PhoneGap...
+            document.addEventListener("deviceready", function() {
+                phonegapReadyEvent.resolve();
+            }, false);
+
+        } else {
+            // We are running in a browser, so we are not running PhoneGap...
+            phonegapReadyEvent.resolve();
+        }
+
+        // We wait for at least two seconds...
+        setTimeout(function() {
+            timeoutEvent.resolve();
+        }, 2000);
+
+        // When both events have fired, we move to the main app...
+        $.when(timeoutEvent, phonegapReadyEvent).done(function() {
+            window.location='./GuardianAngel.html';
+        });
+    </script>
+</body>
 </html>
