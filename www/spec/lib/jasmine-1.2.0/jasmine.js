@@ -75,7 +75,7 @@ jasmine.clearInterval = jasmine.bindOriginal_(jasmine.getGlobal(), 'clearInterva
 jasmine.MessageResult = function(values) {
   this.type = 'log';
   this.values = values;
-  this.trace = new Error(); // todo: test better
+  this.trace = new Error();
 };
 
 jasmine.MessageResult.prototype.toString = function() {
@@ -473,7 +473,7 @@ if (isCommonJS) exports.spyOn = spyOn;
 /**
  * Creates a Jasmine spec that will be added to the current suite.
  *
- * // TODO: pending tests
+ *
  *
  * @example
  * it('should be true', function() {
@@ -579,9 +579,9 @@ if (isCommonJS) exports.afterEach = afterEach;
  * of setup in some tests.
  *
  * @example
- * // TODO: a simple suite
  *
- * // TODO: a simple suite with a nested describe block
+ *
+ *
  *
  * @param {String} description A string, usually the class under test.
  * @param {Function} specDefinitions function that defines several specs.
@@ -1143,12 +1143,12 @@ jasmine.Matchers = function(env, actual, spec, opt_isNot) {
   this.reportWasCalled_ = false;
 };
 
-// todo: @deprecated as of Jasmine 0.11, remove soon [xw]
+//
 jasmine.Matchers.pp = function(str) {
   throw new Error("jasmine.Matchers.pp() is no longer supported, please use jasmine.pp() instead!");
 };
 
-// todo: @deprecated Deprecated as of Jasmine 0.10. Rewrite your custom matchers to return true or false. [xw]
+//
 jasmine.Matchers.prototype.report = function(result, failing_message, details) {
   throw new Error("As of jasmine 0.11, custom matchers must be implemented differently -- please see jasmine docs");
 };
@@ -1359,7 +1359,7 @@ jasmine.Matchers.prototype.toHaveBeenCalledWith = function() {
   }
   this.message = function() {
     if (this.actual.callCount === 0) {
-      // todo: what should the failure message for .not.toHaveBeenCalledWith() be? is this right? test better. [xw]
+      //
       return [
         "Expected spy " + this.actual.identity + " to have been called with " + jasmine.pp(expectedArgs) + " but it was never called.",
         "Expected spy " + this.actual.identity + " not to have been called with " + jasmine.pp(expectedArgs) + " but it was."
