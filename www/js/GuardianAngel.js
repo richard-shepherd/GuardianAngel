@@ -11,6 +11,16 @@ function GuardianAngel() {
     try{
         this.log("Guardian Angel starting.");
 
+        // We load the settings...
+        this.settings = {
+            phoneNumbers: "",
+            crashLeanAngle: 60.0,
+            warningSecondsBeforeSendingTexts: 30,
+            numberTexts: 3,
+            sendTextsEveryNSeconds: 60
+        };
+        this.loadSettings();
+
         var that = this;
 
         // True if the ride has started, ie the Start button has been pressed...
@@ -41,17 +51,16 @@ function GuardianAngel() {
         // We start the lean-angle calculator.
         // This subscribes to the lean-angle and smooths it...
         this.log("Creating the lean-angle calculator.");
-        this.leanCalculator = new LeanCalculator(
-            function(leanAngle) { that.onLeanAngleUpdated(leanAngle); },
-            function() { that.onCrashDetected(); },
-            {} // optional params
-        );
+        this.leanCalculator = new LeanCalculator({
+            callback: function(leanAngle) { that.onLeanAngleUpdated(leanAngle); },
+            alertCallback: function() { that.onCrashDetected(); },
+            alertAngle: this.settings.crashLeanAngle
+        });
 
         // We register the Start button click...
         this.log("Registering Start button click event.")
         $("#start-button").click(function() { that.onStartButtonClicked(); });
-
-        } catch(err) {
+    } catch(err) {
         this.error(err.message);
     }
 }
@@ -234,4 +243,13 @@ GuardianAngel.prototype.stopRide = function() {
 
     // We move to the ride-info slide...
     this.swiper.slideTo(GuardianAngel.Slide.RIDE_INFO);
+};
+
+/**
+ * loadSettings
+ * ------------
+ * Loads settings, and sets them to defaults if they have not previously been stored.
+ */
+GuardianAngel.prototype.loadSettings = function() {
+    this.log("Loading settings.")
 };

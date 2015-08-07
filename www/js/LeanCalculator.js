@@ -8,33 +8,29 @@
 /**
  * @constructor
  *
- * @param callback
- * Called back at every sample interval with the smoothed value.
- * The callback is: function(smoothedValue), where smoothedValue is a float.
- *
- * @param alertCallback
- * Called back if the lean angle has exceeded a threshold for a period of time.
- *
  * @param params
  * Overrides for the default params. See the params object below.
+ * 'callback' is function(smoothedValue), where smoothedValue is a float.
+ * 'alertCallback' is function()
  */
-function LeanCalculator(callback, alertCallback, params) {
-    this._callback = callback;
-    this._alertCallback = alertCallback;
-
+function LeanCalculator(params) {
     // Default params, which can be overridden optionally by the params passed in...
     this._params = {
+        // The callbacks...
+        callback: null,
+        alertCallback: null,
+
         // We take lean samples at this interval...
         sampleSpeedMS: 50,
 
         // Number of samples over which we perform a moving average (if the samples are volatile)...
-        numberSamples: 16,
+        numberSamples: 14,
 
         // Raise the alert callback if this angle is exceeded...
         alertAngle: 60.0,
 
         // Raise the alert callback if the alertAngle has been exceeded for this length of time...
-        alertAfterSeconds: 6.0,
+        alertAfterSeconds: 5.0,
 
         // We may not call back on every sample...
         callbackEveryNSamples: 1
@@ -46,6 +42,11 @@ function LeanCalculator(callback, alertCallback, params) {
 
     // We hold the most recent raw lean angle...
     this._rawLeanAngle = 0.0;
+
+    // A timer which runs when the lean angle goes over the limit.
+    // If it is over the limit for the timeout, we consider there to
+    // have been a crash...
+    this._alertTimeoutTimer = null;
 
     // The array of recent samples. This is really more like a
     // circular buffer, with sampleIndex pointing to the current
@@ -117,12 +118,39 @@ LeanCalculator.prototype.onTimer = function() {
     for(var i=0; i<numberSamples; ++i) {
         total += this._samples[i];
     }
-    var movingAverage = total / numberSamples;
+    var leanAngle = total / numberSamples;
+
+    // We check for a crash...
+    this.checkForCrash(leanAngle);
 
     // And call back...
     this._callbackSampleCount++;
     if(this._callbackSampleCount >= this._params.callbackEveryNSamples) {
-        this._callback(movingAverage);
+        this._params.callback(leanAngle);
         this._callbackSampleCount = 0;
     }
 };
+
+/**
+ * checkForCrash
+ * -------------
+ * We check if the angle is greater than the "crash" limit.
+ */
+LeanCalculator.prototype.checkForCrash = function(leanAngle) {
+    if(leanAngle > this._params.alertAngle && this._alertTimeoutTimer === null) {
+        // The angle has gone over the limit, and the timer is not running,
+        // so we start it...
+        var that = this;
+        this._alertTimeoutTimer = setTimeout(function() {
+            // The angle has been over the limit for the timeout, so we
+            // raise the alert...
+            that._params.alertCallback();
+        }, this._params.alertAfterSeconds * 1000);
+    } else if(leanAngle <= this._params.alertAngle && this._alertTimeoutTimer !== null) {
+        // The lean angle is less than the alert limit, and the timer is running.
+        // It looks like the alert may have been a blip...
+        clearTimeout(this._alertTimeoutTimer);
+        this._alertTimeoutTimer = null;
+    }
+};
+
