@@ -218,8 +218,9 @@ GuardianAngel.prototype.onStartButtonClicked = function() {
  */
 GuardianAngel.prototype.startRide = function() {
     // We change the button to say "Stop"...
-    $("#start-button").html('<i class="icon-stop"></i> Press to stop ');
-    $("#start-button").css("background-color", "green");
+    var startButtonElement = $("#start-button");
+    startButtonElement.html('<i class="icon-stop"></i> Press to stop ');
+    startButtonElement.css("background-color", "green");
 
     // We reset the max and min leans...
     this.maxLeftLean = 0.0;
@@ -239,8 +240,9 @@ GuardianAngel.prototype.stopRide = function() {
     this.rideStarted = false;
 
     // We change the button to say "Start"..
-    $("#start-button").html('<i class="icon-play"></i> Press to start');
-    $("#start-button").css("background-color", "red");
+    var startButtonElement = $("#start-button");
+    startButtonElement.html('<i class="icon-play"></i> Press to start');
+    startButtonElement.css("background-color", "red");
 
     // We move to the ride-info slide...
     this.swiper.slideTo(GuardianAngel.Slide.RIDE_INFO);
