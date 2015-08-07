@@ -48,9 +48,9 @@ body {
     display: inline-block;
     color: #ffffff;
     font-family: Arial;
-    font-size: 14px;
+    font-size: 5vh;
     font-weight: bold;
-    padding: 10px 0px;
+    padding: 2vh 0px;
     text-decoration: none;
     min-width: 90%;
 }
@@ -71,8 +71,8 @@ body {
 }
 
 #gps-speed-wrapper {
-    line-height: 37vw;
-    height: 37vw;
+    line-height: 40vw;
+    height: 40vw;
     vertical-align: middle;
     text-align: right;
     font-family: SevenSegment;
