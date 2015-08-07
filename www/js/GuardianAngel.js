@@ -58,7 +58,7 @@ function GuardianAngel() {
         });
 
         // We register the Start button click...
-        this.log("Registering Start button click event.")
+        this.log("Registering Start button click event.");
         $("#start-button").click(function() { that.onStartButtonClicked(); });
     } catch(err) {
         this.error(err.message);
@@ -95,8 +95,9 @@ GuardianAngel.prototype.createSwiper = function() {
 GuardianAngel.prototype.createLeanAngleDial = function() {
     this.log("Creating the lean-angle dial.");
 
-    var leanAngle_Width = $("#lean-angle-dial").width();
-    var leanAngle_Height = $("#lean-angle-dial").height();
+    var dialElement = $("#lean-angle-dial");
+    var leanAngle_Width = dialElement.width();
+    var leanAngle_Height = dialElement.height();
     var dialRadius = leanAngle_Width / 3.0;
     var offsetX = leanAngle_Width / 2.0;
     var offsetY = leanAngle_Width / 2.0;
@@ -104,7 +105,7 @@ GuardianAngel.prototype.createLeanAngleDial = function() {
     var labelOffset = leanAngle_Width / 20.0;
     var labelFontSize = leanAngle_Width / 20.0;
 
-    this.raphaelCanvas = Raphael("lean-angle-dial", leanAngle_Width, leanAngle_Height);
+    this.raphaelCanvas = new Raphael("lean-angle-dial", leanAngle_Width, leanAngle_Height);
     this.leanAngleDial = new wso2vis.ctrls.CGauge()
         .dialRadius(dialRadius)
         .smallTick(2) .largeTick(10)
