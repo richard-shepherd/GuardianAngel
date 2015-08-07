@@ -1,4 +1,67 @@
+body {
+    margin: 0px;
+    padding: 0px;
+    background-color: black;
+    color: white;
+}
+
+@font-face {
+    font-family: SevenSegment;
+    src: url("../fonts/LetsGoDigital.ttf");
+}
+
 .swiper-container {
     height: 100vh;
 }
 
+.swiper-pagination-bullet {
+    background: white;
+}
+
+.header {
+    background-color: #202020;
+    font-size: 18px;
+    width: 100%;
+    line-height: 36px;
+    height: 36px;
+    text-transform: uppercase;
+    text-align: center;
+    vertical-align: middle;
+}
+
+#start-button-wrapper {
+    text-align: center;
+}
+
+#start-button {
+    margin-top: 2%;
+}
+
+#start-button {
+    background-color: red;
+    -webkit-border-radius: 0.8vw;
+    border-radius: 0.8vw;
+    display: inline-block;
+    color: #ffffff;
+    font-family: Arial;
+    font-size: 14px;
+    font-weight: bold;
+    padding: 10px 0px;
+    text-decoration: none;
+    min-width: 90%;
+}
+
+#lean-angle-panel {
+    float: left;
+    width: 50%;
+}
+
+#gps-info-panel {
+    float: right;
+    width: 50%;
+}
+
+#lean-angle-dial {
+    width: 50vw;
+    height: 30vw;
+}

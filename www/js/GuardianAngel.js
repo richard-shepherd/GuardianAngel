@@ -8,7 +8,11 @@
  * @constructor
  */
 function GuardianAngel() {
-    alert("Hello");
+    this._swiper = new Swiper('.swiper-container', {
+        initialSlide: 1,
+        pagination: '.swiper-pagination',
+        paginationClickable: true
+    });
 }
 
 // An enum for the slides we show...

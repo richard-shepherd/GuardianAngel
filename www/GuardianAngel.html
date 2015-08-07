@@ -41,23 +41,72 @@
     <!-- The pages in the app are 'slides' from the idangero.us swiper control -->
     <div class="swiper-container">
         <div class="swiper-wrapper">
+
+            <!-- The setting slide -->
             <div class="swiper-slide">
-                Slide 1
+                <div class="header">Settings</div>
             </div>
+
+            <!-- The main slide shown during a ride -->
             <div class="swiper-slide">
-                Slide 2
+                <div class="header">Ride</div>
+
+                <!--
+                This slide is split into two panels. One shows the lean-angle dial.
+                The other shows the GPS info and speed
+                -->
+                <div id="lean-angle-panel">
+
+                    <!-- Button to start and stop a ride -->
+                    <div id="start-button-wrapper">
+                        <a href="#" id="start-button"><i class="icon-play"></i> Press to start</a>
+                    </div>
+
+                    <div id="lean-angle-dial"></div>
+                    <div>Max left lean: <span id="max-left-lean">0.0</span>&#176</div>
+                    <div>Max right lean: <span id="max-right-lean">0.0</span>&#176</div>
+
+                </div>
+
+                <div id="gps-info-panel">
+                    <div>GPS accuracy (m): <span id="gps-accuracy" style="font-family: SevenSegment; font-size: 3vw">n/a</span></div>
+                    <div id="gps-error"></div>
+                    <div id="gps-speed-label">Speed (mph)</div>
+                    <div id="gps-speed" style="font-family: SevenSegment; font-size: 30vw">0</div>
+                </div>
+
             </div>
+
+            <!-- Shows info about a ride, such as max and min lean angle with maps -->
+            <div class="swiper-slide">
+                <div class="header">Ride info</div>
+            </div>
+
+            <!-- Slide shown when a crash is detected -->
+            <div class="swiper-slide">
+                <div class="header">Crash detection</div>
+            </div>
+
+            <!-- Slide showing log info -->
+            <div class="swiper-slide">
+                <div class="header">Logs</div>
+            </div>
+
         </div>
+
+        <!-- This shows the dots at the bottom of the page, showing the number of slides -->
+        <div class="swiper-pagination"></div>
     </div>
 
 
-        <!-- Javascript -->
-        <script src="cordova.js"></script>
-        <script src="js/GuardianAngel.js"></script>
-        <script>
-            // Runs the code that manages the app...
-            var guardianAngel = new GuardianAngel();
-        </script>
+    <!-- Javascript -->
+    <script src="cordova.js"></script>
+    <script src="jslibs/swiper/js/swiper.min.js"></script>
+    <script src="js/GuardianAngel.js"></script>
+    <script>
+        // Runs the code that manages the app...
+        var guardianAngel = new GuardianAngel();
+    </script>
 
     </body>
 </html>
