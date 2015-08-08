@@ -137,6 +137,7 @@ LeanCalculator.prototype.onTimer = function() {
  * We check if the angle is greater than the "crash" limit.
  */
 LeanCalculator.prototype.checkForCrash = function(leanAngle) {
+    leanAngle = Math.abs(leanAngle);
     if(leanAngle > this._params.alertAngle && this._alertTimeoutTimer === null) {
         // The angle has gone over the limit, and the timer is not running,
         // so we start it...

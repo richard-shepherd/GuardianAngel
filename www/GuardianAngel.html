@@ -67,8 +67,14 @@
                         </div>
 
                         <div id="lean-angle-dial"></div>
-                        <div class="min-max"><span class="min-max-text">Max left lean:</span><span id="max-left-lean" class="min-max-angle">0.0</span>&#176</div>
-                        <div class="min-max"><span class="min-max-text">Max right lean:</span><span id="max-right-lean" class="min-max-angle">0.0</span>&#176</div>
+                        <div class="min-max">
+                            <span class="min-max-text">Max left lean:</span>
+                            <span id="max-left-lean" class="min-max-angle">0.0</span>&#176
+                        </div>
+                        <div class="min-max">
+                            <span class="min-max-text">Max right lean:</span>
+                            <span id="max-right-lean" class="min-max-angle">0.0</span>&#176
+                        </div>
 
                     </div>
 
@@ -76,7 +82,8 @@
                         <div>GPS accuracy (m): <span id="gps-accuracy">n/a</span></div>
                         <div id="gps-error"></div>
                         <div id="gps-speed-wrapper">
-                            <span id="gps-speed">290</span><span id="gps-speed-type">kph</span>
+                            <span id="gps-speed">290</span>
+                            <span id="gps-speed-type">kph</span>
                         </div>
                     </div>
 
@@ -96,6 +103,19 @@
             <div class="swiper-slide">
                 <div class="header">Crash detection</div>
                 <div class="slide-content">
+
+                    <!-- Textshown if no crash has been detected -->
+                    <div id="crash-not-detected-text">No crash detected</div>
+
+                    <!-- Button to let you abort sending crash texts -->
+                    <div id="crash-detected-button-wrapper">
+                        <a href="#" id="crash-detected-button"><i class="icon-stop"></i> Crash detected. Press to cancel sending texts.</a>
+                    </div>
+
+                    <div id="crash-detected-timer-text">
+                        <span id="crash-detected-timer">30</span>
+                    </div>
+
 
                 </div>
             </div>

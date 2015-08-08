@@ -41,9 +41,6 @@ body {
 
 #start-button {
     margin-top: 2%;
-}
-
-#start-button {
     background-color: red;
     -webkit-border-radius: 0.8vw;
     border-radius: 0.8vw;
@@ -111,4 +108,37 @@ body {
 #log {
     font-family: courier, monospace;
     font-size: 1.5vw;
+}
+
+#crash-not-detected-text {
+    font-size: 3vw;
+}
+
+#crash-detected-button-wrapper {
+    text-align: center;
+}
+
+#crash-detected-button {
+    margin-top: 2%;
+    background-color: red;
+    -webkit-border-radius: 0.8vw;
+    border-radius: 0.8vw;
+    display: inline-block;
+    color: #ffffff;
+    font-family: Arial;
+    font-size: 7vh;
+    font-weight: bold;
+    padding: 4vh 0px;
+    text-decoration: none;
+    min-width: 90%;
+}
+
+#crash-detected-timer-text {
+    font-size: 3vw;
+    text-align: center;
+}
+
+#crash-detected-timer {
+    font-family: SevenSegment;
+    font-size: 30vw;
 }

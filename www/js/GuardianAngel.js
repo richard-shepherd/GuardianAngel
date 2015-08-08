@@ -60,6 +60,13 @@ function GuardianAngel() {
         // We register the Start button click...
         this.log("Registering Start button click event.");
         $("#start-button").click(function() { that.onStartButtonClicked(); });
+
+        // We register the crash-detected button click (ie, button to cancel crash detection)...
+        this.log("Registering crash-detection button click event.");
+        $("#crash-detected-button").click(function() { that.clearCrashDetection(); });
+
+        // We set the crash-detection page to its default, ie no crash detected...
+        this.clearCrashDetection();
     } catch(err) {
         this.error(err.message);
     }
@@ -70,7 +77,8 @@ GuardianAngel.Slide = {
     SETTINGS: 0,
     LEAN_ANGLE: 1,
     RIDE_INFO: 2,
-    LOGS: 3
+    CRASH_DETECTION: 3,
+    LOGS: 4
 };
 
 /**
@@ -163,6 +171,12 @@ GuardianAngel.prototype.onLeanAngleUpdated = function(leanAngle) {
  */
 GuardianAngel.prototype.onCrashDetected = function() {
     try {
+        // We show the crash detection page...
+        this.swiper.slideTo(GuardianAngel.Slide.CRASH_DETECTION);
+        $("#crash-not-detected-text").hide();
+        $("#crash-detected-button-wrapper").show();
+        $("#crash-detected-timer-text").show();
+
 
     } catch(err) {
         this.error(err.message);
@@ -228,6 +242,9 @@ GuardianAngel.prototype.startRide = function() {
     $("#max-left-lean").text("0.0");
     $("#max-right-lean").text("0.0");
 
+    // We clear the crash detection page...
+    this.clearCrashDetection();
+
     this.rideStarted = true;
 };
 
@@ -246,6 +263,17 @@ GuardianAngel.prototype.stopRide = function() {
 
     // We move to the ride-info slide...
     this.swiper.slideTo(GuardianAngel.Slide.RIDE_INFO);
+};
+
+/**
+ * clearCrashDetection
+ * -------------------
+ * Clears the crash-detection page and associated timers.
+ */
+GuardianAngel.prototype.clearCrashDetection = function() {
+    $("#crash-not-detected-text").show();
+    $("#crash-detected-button-wrapper").hide();
+    $("#crash-detected-timer-text").hide();
 };
 
 /**
