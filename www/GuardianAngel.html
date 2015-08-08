@@ -32,7 +32,9 @@
         <link rel="stylesheet" href="css/GuardianAngel.css">
 
         <!-- Javascript libraries loaded in head -->
+        <script src="https://maps.googleapis.com/maps/api/js"></script>
         <script src="js/jquery/jquery-2.1.4.min.js"></script>
+        <script src="js/gmaps/gmaps.js"></script>
 
         <title>Guardian Angel</title>
     </head>
@@ -94,6 +96,16 @@
             <div class="swiper-slide">
                 <div class="header">Ride info</div>
                 <div class="slide-content">
+
+                    <div id="map-1-wrapper">
+                        <div class="map-label">Max left lean</div>
+                        <div id="map-1" class="map swiper-no-swiping"></div>
+                    </div>
+
+                    <div id="map-2-wrapper">
+                        <div class="map-label">Max right lean</div>
+                        <div id="map-2" class="map swiper-no-swiping"></div>
+                    </div>
 
                 </div>
             </div>

@@ -1,10 +1,21 @@
 /**
+ * LeanInfo
+ * --------
+ * A small class holding information about a lean angle and where it occurred.
+ * @constructor
+ */
+function LeanInfo() {
+    this.leanAngle = 0.0;
+    this.latitude = 0.0;
+    this.longitude = 0.0;
+}
+
+
+/**
  * GuardianAngel
  * -------------
  * Code to manage the Guardian Angel app.
- */
-
-/**
+ *
  * @constructor
  */
 function GuardianAngel() {
@@ -37,13 +48,22 @@ function GuardianAngel() {
         this.leanAngleDialSignificantChange = 2.0;
 
         // The maximum lean angles recorded in a session...
-        this.maxLeftLean = 0.0;
-        this.maxRightLean = 0.0;
+        this.maxLeftLean = new LeanInfo();
+        this.maxRightLean = new LeanInfo();
+
+        // The Media object that plays the alert sound when a crash is detected...
+        this.alertSound = null;
+        this.alertPlaying = false;
 
         // We find the platform, in particular noting whether it is Android (as
         // media files are handled differently)...
         this.isAndroid = false;
         this.findPlatform();
+
+        // We create maps to show max lean angles...
+        this.maxLeftLeanMap = null;
+        this.maxRightLeanMap = null;
+        this.createMaps();
 
         // We create the "swiper" which shows the slides...
         this.swiper = null;
@@ -65,8 +85,8 @@ function GuardianAngel() {
 
         // We start the GPS...
         this.log("Starting GPS.")
-        this.currentLongitude = 0.0;
         this.currentLatitude = 0.0;
+        this.currentLongitude = 0.0;
         this.gps = navigator.geolocation.watchPosition(
             function(position) { that.onGPSSuccess(position); },
             function(error) { that.onGPSError(error); },
@@ -148,7 +168,7 @@ GuardianAngel.prototype.createLeanAngleDial = function() {
 GuardianAngel.prototype.onLeanAngleUpdated = function(leanAngle) {
     try {
         // We use the current lean angle as the "center" angle until the Start
-        // biutton has been pressed, in case the device is not exactly central...
+        // button has been pressed, in case the device is not exactly central...
         if(this.rideStarted === false) {
             this.centeredLeanAngle = leanAngle;
         }
@@ -164,14 +184,18 @@ GuardianAngel.prototype.onLeanAngleUpdated = function(leanAngle) {
         // for the current ride..
         var absLean = Math.abs(leanAngle);
         if(leanAngle < 0.0) {
-            if(absLean > this.maxLeftLean) {
-                this.maxLeftLean = absLean;
-                $("#max-left-lean").text(this.maxLeftLean.toFixed(1));
+            if(absLean > this.maxLeftLean.leanAngle) {
+                this.maxLeftLean.leanAngle = absLean;
+                this.maxLeftLean.latitude = this.currentLatitude;
+                this.maxLeftLean.longitude = this.currentLongitude;
+                $("#max-left-lean").text(absLean.toFixed(1));
             }
         } else {
-            if(absLean > this.maxRightLean) {
-                this.maxRightLean = absLean;
-                $("#max-right-lean").text(this.maxRightLean.toFixed(1));
+            if(absLean > this.maxRightLean.leanAngle) {
+                this.maxRightLean.leanAngle = absLean;
+                this.maxRightLean.latitude = this.currentLatitude;
+                this.maxRightLean.longitude = this.currentLongitude;
+                $("#max-right-lean").text(absLean.toFixed(1));
             }
         }
     } catch(err) {
@@ -192,6 +216,8 @@ GuardianAngel.prototype.onCrashDetected = function() {
         $("#crash-detected-button-wrapper").show();
         $("#crash-detected-timer-text").show();
 
+        // We play the alert sound...
+        this.playAlertSound();
 
 
     } catch(err) {
@@ -253,8 +279,8 @@ GuardianAngel.prototype.startRide = function() {
     startButtonElement.css("background-color", "green");
 
     // We reset the max and min leans...
-    this.maxLeftLean = 0.0;
-    this.maxRightLean = 0.0;
+    this.maxLeftLean = new LeanInfo();
+    this.maxRightLean = new LeanInfo();
     $("#max-left-lean").text("0.0");
     $("#max-right-lean").text("0.0");
 
@@ -290,6 +316,7 @@ GuardianAngel.prototype.clearCrashDetection = function() {
     $("#crash-not-detected-text").show();
     $("#crash-detected-button-wrapper").hide();
     $("#crash-detected-timer-text").hide();
+    this.stopAlertSound();
 };
 
 /**
@@ -308,16 +335,23 @@ GuardianAngel.prototype.loadSettings = function() {
  */
 GuardianAngel.prototype.onGPSSuccess = function(position) {
     try {
+        var coords = position.coords;
+
         // We show the GPS accuracy in meters, and color code it.
         // Accuracy better that 10m usually means that you have a good GPS fix.
-        $("#gps-accuracy").text(position.coords.accuracy.toFixed(1));
-        if(position.coords.accuracy > 30) {
+        var accuracy = coords.accuracy;
+        $("#gps-accuracy").text(accuracy.toFixed(1));
+        if(accuracy > 30) {
             $("#gps-accuracy").css("color", "red");
-        } else if(position.coords.accuracy > 9.9) {
+        } else if(accuracy > 9.9) {
             $("#gps-accuracy").css("color", "orange");
         } else {
             $("#gps-accuracy").css("color", "green");
         }
+
+        // We store the current latitude and longitude...
+        this.currentLatitude = coords.latitude;
+        this.currentLongitude = coords.longitude;
 
         // We show the speed, translating to either mph or kph...
         var speed = 0.0;
@@ -331,8 +365,8 @@ GuardianAngel.prototype.onGPSSuccess = function(position) {
             speedUnitsElement.text("kph");
         }
 
-        if(position.coords.speed) {
-            speed = position.coords.speed * speedFactor;
+        if(coords.speed) {
+            speed = coords.speed * speedFactor;
         }
         $("#gps-speed").text(speed.toFixed(0));
     } catch(err) {
@@ -365,4 +399,72 @@ GuardianAngel.prototype.findPlatform = function() {
 
     this.isAndroid = platform.toUpperCase().indexOf("ANDROID") > -1;
     this.log("isAndroid: " + this.isAndroid);
+};
+
+/**
+ * playAlertSound
+ * --------------
+ * Plays the alert sound on a loop.
+ */
+GuardianAngel.prototype.playAlertSound = function() {
+    // We stop any existing alert sound...
+    this.stopAlertSound();
+
+    // And create a new one...
+    var path = "";
+    if(this.isAndroid) {
+        path = "/android_asset/www/sounds/siren.mp3";
+    } else {
+        path = "sounds/siren.mp3";
+    }
+
+    var that = this;
+    this.alertSound = new Media(
+        path,
+        null,
+        null,
+        function(status) {
+            // Called when the status changes. If the sound has finished playing,
+            // but we should still be playing it, we loop it...
+            if( status === Media.MEDIA_STOPPED && that.alertPlaying) {
+                that.alertSound.play();
+            }
+        });
+    this.alertPlaying = true;
+    this.alertSound.play();
+};
+
+/**
+ * stopAlertSound
+ * --------------
+ * Stops the alert sound.
+ */
+GuardianAngel.prototype.stopAlertSound = function() {
+    if(this.alertSound !== null) {
+        this.alertPlaying = false;
+        this.alertSound.stop();
+        this.alertSound = null;
+    }
+};
+
+/**
+ * createMaps
+ * ----------
+ * Creates maps to show where max lean angles occur.
+ */
+GuardianAngel.prototype.createMaps = function() {
+    this.log("Creating maps.");
+
+    this.maxLeftLeanMap = new GMaps({
+        div: "#map-1",
+        lat: 0.0,
+        lng: 0.0
+    });
+
+    this.maxRightLeanMap = new GMaps({
+        div: "#map-2",
+        lat: 0.0,
+        lng: 0.0
+    });
+
 };

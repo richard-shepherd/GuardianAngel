@@ -146,3 +146,24 @@ body {
     font-family: SevenSegment;
     font-size: 30vw;
 }
+
+#map-1-wrapper {
+    float: left;
+    width: 45vw;
+    height: 80vh;
+}
+
+#map-2-wrapper {
+    float: right;
+    width: 45vw;
+    height: 80vh;
+}
+
+.map-label {
+    font-size: 3vw;
+}
+
+.map {
+    width: 90%;
+    height:90%;
+}
