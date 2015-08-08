@@ -47,7 +47,7 @@ body {
     display: inline-block;
     color: #ffffff;
     font-family: Arial;
-    font-size: 5vh;
+    font-size: 6vh;
     font-weight: bold;
     padding: 2vh 0px;
     text-decoration: none;
@@ -76,7 +76,12 @@ body {
 
 #gps-info-panel {
     float: right;
+    text-align: right;
     width: 50%;
+}
+
+#gps-accuracy-text {
+    font-size: 2.5vw;
 }
 
 #gps-accuracy {
@@ -88,7 +93,6 @@ body {
     line-height: 40vw;
     height: 40vw;
     vertical-align: middle;
-    text-align: right;
     font-family: SevenSegment;
 }
 

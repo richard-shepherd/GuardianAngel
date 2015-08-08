@@ -57,6 +57,15 @@ function GuardianAngel() {
             alertAngle: this.settings.crashLeanAngle
         });
 
+        // We start the GPS...
+        this.log("Starting GPS.")
+        this.currentLongitude = 0.0;
+        this.currentLatitude = 0.0;
+        this.gps = navigator.geolocation.watchPosition(
+            function(position) { that.onGPSSuccess(position); },
+            function(error) { that.onGPSError(error); },
+            { timeout: 30000, enableHighAccuracy: true });
+
         // We register the Start button click...
         this.log("Registering Start button click event.");
         $("#start-button").click(function() { that.onStartButtonClicked(); });
@@ -233,7 +242,7 @@ GuardianAngel.prototype.onStartButtonClicked = function() {
 GuardianAngel.prototype.startRide = function() {
     // We change the button to say "Stop"...
     var startButtonElement = $("#start-button");
-    startButtonElement.html('<i class="icon-stop"></i> Press to stop ');
+    startButtonElement.html('<i class="icon-stop"></i> Press to stop ride');
     startButtonElement.css("background-color", "green");
 
     // We reset the max and min leans...
@@ -258,7 +267,7 @@ GuardianAngel.prototype.stopRide = function() {
 
     // We change the button to say "Start"..
     var startButtonElement = $("#start-button");
-    startButtonElement.html('<i class="icon-play"></i> Press to start');
+    startButtonElement.html('<i class="icon-play"></i> Press to start ride');
     startButtonElement.css("background-color", "red");
 
     // We move to the ride-info slide...
@@ -283,4 +292,45 @@ GuardianAngel.prototype.clearCrashDetection = function() {
  */
 GuardianAngel.prototype.loadSettings = function() {
     this.log("Loading settings.")
+};
+
+/**
+ * onGPSSuccess
+ * ------------
+ * Called when we get updated GPS information.
+ */
+GuardianAngel.prototype.onGPSSuccess = function(position) {
+    try {
+        $("#gps-accuracy").text(position.coords.accuracy.toFixed(1));
+
+        var mph = 0.0;
+        if(position.coords.speed) {
+            mph = position.coords.speed * 2.23694;
+        }
+        $("#gps-speed").text(mph.toFixed(0));
+
+        if(position.coords.accuracy > 30) {
+            $("#gps-accuracy").css("color", "red");
+        } else if(position.coords.accuracy > 9.9) {
+            $("#gps-accuracy").css("color", "orange");
+        } else {
+            // Accuracy of less than 10m should mean we have the "real" GPS signal...
+            $("#gps-accuracy").css("color", "green");
+        }
+    } catch(err) {
+        this.error(err.message);
+    }
+};
+
+/**
+ * onGPSError
+ * ----------
+ * Called if we get an error from the GPS.
+ */
+GuardianAngel.prototype.onGPSError = function(error) {
+    try {
+        this.error("GPS error: " + error.message);
+    } catch(err) {
+        this.error(err.message);
+    }
 };
