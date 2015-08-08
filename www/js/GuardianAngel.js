@@ -17,7 +17,8 @@ function GuardianAngel() {
             crashLeanAngle: 60.0,
             warningSecondsBeforeSendingTexts: 30,
             numberTexts: 3,
-            sendTextsEveryNSeconds: 60
+            sendTextsEveryNSeconds: 60,
+            speedUnits: "mph"
         };
         this.loadSettings();
 
@@ -38,6 +39,11 @@ function GuardianAngel() {
         // The maximum lean angles recorded in a session...
         this.maxLeftLean = 0.0;
         this.maxRightLean = 0.0;
+
+        // We find the platform, in particular noting whether it is Android (as
+        // media files are handled differently)...
+        this.isAndroid = false;
+        this.findPlatform();
 
         // We create the "swiper" which shows the slides...
         this.swiper = null;
@@ -187,6 +193,7 @@ GuardianAngel.prototype.onCrashDetected = function() {
         $("#crash-detected-timer-text").show();
 
 
+
     } catch(err) {
         this.error(err.message);
     }
@@ -301,22 +308,33 @@ GuardianAngel.prototype.loadSettings = function() {
  */
 GuardianAngel.prototype.onGPSSuccess = function(position) {
     try {
+        // We show the GPS accuracy in meters, and color code it.
+        // Accuracy better that 10m usually means that you have a good GPS fix.
         $("#gps-accuracy").text(position.coords.accuracy.toFixed(1));
-
-        var mph = 0.0;
-        if(position.coords.speed) {
-            mph = position.coords.speed * 2.23694;
-        }
-        $("#gps-speed").text(mph.toFixed(0));
-
         if(position.coords.accuracy > 30) {
             $("#gps-accuracy").css("color", "red");
         } else if(position.coords.accuracy > 9.9) {
             $("#gps-accuracy").css("color", "orange");
         } else {
-            // Accuracy of less than 10m should mean we have the "real" GPS signal...
             $("#gps-accuracy").css("color", "green");
         }
+
+        // We show the speed, translating to either mph or kph...
+        var speed = 0.0;
+        var speedFactor = 0.0;
+        var speedUnitsElement = $("#gps-speed-units");
+        if(this.settings.speedUnits === "mph") {
+            speedFactor = 2.23694;
+            speedUnitsElement.text("mph");
+        } else if(this.settings.speedUnits === "kph") {
+            speedFactor = 3.6;
+            speedUnitsElement.text("kph");
+        }
+
+        if(position.coords.speed) {
+            speed = position.coords.speed * speedFactor;
+        }
+        $("#gps-speed").text(speed.toFixed(0));
     } catch(err) {
         this.error(err.message);
     }
@@ -333,4 +351,18 @@ GuardianAngel.prototype.onGPSError = function(error) {
     } catch(err) {
         this.error(err.message);
     }
+};
+
+/**
+ * findPlatform
+ * ------------
+ * We check which device we are running on. In particular we note if we are on
+ * Android, as paths to sound files need to be treated differently.
+ */
+GuardianAngel.prototype.findPlatform = function() {
+    var platform = navigator.userAgent;
+    this.log("Platform: " + platform);
+
+    this.isAndroid = platform.toUpperCase().indexOf("ANDROID") > -1;
+    this.log("isAndroid: " + this.isAndroid);
 };
