@@ -1,14 +1,21 @@
 /**
- * LeanInfo
- * --------
- * A small class holding information about a lean angle and where it occurred.
+ * MaxLeanInfo
+ * -----------
+ * A small class holding information about a maximum lean angle and where it occurred.
  * @constructor
  */
-function LeanInfo() {
+function MaxLeanInfo(element) {
     this.leanAngle = 0.0;
     this.latitude = 0.0;
     this.longitude = 0.0;
+    this.element  = element;
+    this.map = null;
 }
+MaxLeanInfo.prototype.clear = function() {
+    this.leanAngle = 0.0;
+    this.latitude = 0.0;
+    this.longitude = 0.0;
+};
 
 
 /**
@@ -48,8 +55,8 @@ function GuardianAngel() {
         this.leanAngleDialSignificantChange = 2.0;
 
         // The maximum lean angles recorded in a session...
-        this.maxLeftLean = new LeanInfo();
-        this.maxRightLean = new LeanInfo();
+        this.maxLeftLeanInfo = new MaxLeanInfo($("#max-left-lean"));
+        this.maxRightLeanInfo = new MaxLeanInfo($("#max-right-lean"));
 
         // The Media object that plays the alert sound when a crash is detected...
         this.alertSound = null;
@@ -60,9 +67,12 @@ function GuardianAngel() {
         this.isAndroid = false;
         this.findPlatform();
 
+        // Countdown seconds before sending a text, after a crash has been detected,
+        // and a timer to do the countdown...
+        this.textCountdownSeconds = 0;
+        this.textCountdownTimer = null;
+
         // We create maps to show max lean angles...
-        this.maxLeftLeanMap = null;
-        this.maxRightLeanMap = null;
         this.createMaps();
 
         // We create the "swiper" which shows the slides...
@@ -185,15 +195,13 @@ GuardianAngel.prototype.onLeanAngleUpdated = function(leanAngle) {
         // for the current ride..
         var absLean = Math.abs(leanAngle);
         if(leanAngle < 0.0) {
-            if(absLean > this.maxLeftLean.leanAngle) {
-                this.updateMaxLeftLean(absLean);
+            if(absLean > this.maxLeftLeanInfo.leanAngle) {
+                this.updateMaxLeanAngle(absLean, this.maxLeftLeanInfo);
+                //this.updateMaxLeftLean(absLean);
             }
         } else {
-            if(absLean > this.maxRightLean.leanAngle) {
-                this.maxRightLean.leanAngle = absLean;
-                this.maxRightLean.latitude = this.currentLatitude;
-                this.maxRightLean.longitude = this.currentLongitude;
-                $("#max-right-lean").text(absLean.toFixed(1));
+            if(absLean > this.maxRightLeanInfo.leanAngle) {
+                this.updateMaxLeanAngle(absLean, this.maxRightLeanInfo);
             }
         }
     } catch(err) {
@@ -202,25 +210,24 @@ GuardianAngel.prototype.onLeanAngleUpdated = function(leanAngle) {
 };
 
 /**
- * updateMaxLeftLean
- * -----------------
+ * updateMaxLeanAngle
+ * ------------------
+ * Shows the max lean angle, and updates the map showing it.
  */
-GuardianAngel.prototype.updateMaxLeftLean = function(leanAngle) {
+GuardianAngel.prototype.updateMaxLeanAngle = function(leanAngle, leanInfo) {
     // We update the information we hold...
-    this.maxLeftLean.leanAngle = leanAngle;
-    this.maxLeftLean.latitude = this.currentLatitude;
-    this.maxLeftLean.longitude = this.currentLongitude;
+    leanInfo.leanAngle = leanAngle;
+    leanInfo.latitude = this.currentLatitude;
+    leanInfo.longitude = this.currentLongitude;
 
     // We show the max lean angle on the Ride page...
-    $("#max-left-lean").text(leanAngle.toFixed(1));
+    leanInfo.element.text(leanAngle.toFixed(1));
 
+    // TODO: Maybe update the map on a timer to avoid too many quick updates.
     // We update the map...
-    this.maxLeftLeanMap.removeMarkers();
-    this.maxLeftLeanMap.setCenter(this.currentLatitude, this.currentLongitude);
-    this.maxLeftLeanMap.addMarker({
-        lat: this.currentLatitude,
-        lng: this.currentLongitude
-    });
+    leanInfo.map.removeMarkers();
+    leanInfo.map.setCenter(this.currentLatitude, this.currentLongitude);
+    leanInfo.map.addMarker({lat: this.currentLatitude, lng: this.currentLongitude});
 };
 
 /**
@@ -230,16 +237,39 @@ GuardianAngel.prototype.updateMaxLeftLean = function(leanAngle) {
  */
 GuardianAngel.prototype.onCrashDetected = function() {
     try {
+        // TODO: this can be called while crash detection is running. Check this.
         // We show the crash detection page...
         this.swiper.slideTo(GuardianAngel.Slide.CRASH_DETECTION);
         $("#crash-not-detected-text").hide();
         $("#crash-detected-button-wrapper").show();
+        $("#crash-detected-timer").text(this.settings.warningSecondsBeforeSendingTexts);
         $("#crash-detected-timer-text").show();
 
         // We play the alert sound...
         this.playAlertSound();
 
+        // We start the countdown timer...
+        var that = this;
+        this.textCountdownSeconds = this.settings.warningSecondsBeforeSendingTexts;
+        this.textCountdownTimer = setInterval(
+            function() {
+                that.onTextCountdownTimer();
+            }, 1000);
+    } catch(err) {
+        this.error(err.message);
+    }
+};
 
+/**
+ * onTextCountdownTimer
+ * --------------------
+ * Called when the text-countdown timer ticks. When the countdown reaches
+ * zero, we send a text.
+ */
+GuardianAngel.prototype.onTextCountdownTimer = function() {
+    try {
+        this.settings.warningSecondsBeforeSendingTexts--;
+        $("#crash-detected-timer").text(this.settings.warningSecondsBeforeSendingTexts);
     } catch(err) {
         this.error(err.message);
     }
@@ -299,10 +329,10 @@ GuardianAngel.prototype.startRide = function() {
     startButtonElement.css("background-color", "green");
 
     // We reset the max and min leans...
-    this.maxLeftLean = new LeanInfo();
-    this.maxRightLean = new LeanInfo();
-    $("#max-left-lean").text("0.0");
-    $("#max-right-lean").text("0.0");
+    this.maxLeftLeanInfo.clear();
+    this.maxRightLeanInfo.clear();
+    this.maxLeftLeanInfo.element.text("0.0");
+    this.maxRightLeanInfo.element.text("0.0");
 
     // We clear the crash detection page...
     this.clearCrashDetection();
@@ -337,6 +367,10 @@ GuardianAngel.prototype.clearCrashDetection = function() {
     $("#crash-detected-button-wrapper").hide();
     $("#crash-detected-timer-text").hide();
     this.stopAlertSound();
+    if(this.textCountdownTimer) {
+        clearInterval(this.textCountdownTimer);
+        this.textCountdownTimer = null;
+    }
 };
 
 /**
@@ -475,26 +509,23 @@ GuardianAngel.prototype.stopAlertSound = function() {
 GuardianAngel.prototype.createMaps = function() {
     this.log("Creating maps.");
 
-    //var myLatlng = new google.maps.LatLng(54.2034757, -4.632041);
-    //var mapOptions = {
-    //    center : myLatlng,
-    //    zoom : 18,
-    //    mapTypeId : google.maps.MapTypeId.ROADMAP
-    //};
-    //this.maxLeftLeanMap = new google.maps.Map(document.getElementById("map-left"), mapOptions);
-    //this.maxRightLeanMap = new google.maps.Map(document.getElementById("map-right"), mapOptions);
-
-
-    this.maxLeftLeanMap = new GMaps({
+    this.maxLeftLeanInfo.map = new GMaps({
         div: "#map-left",
         lat: 0.0,
-        lng: 0.0
+        lng: 0.0,
+        scaleControl: false,
+        zoomControl: false,
+        streetViewControl: false,
+        panControl: false
     });
 
-    this.maxRightLeanMap = new GMaps({
+    this.maxRightLeanInfo.map = new GMaps({
         div: "#map-right",
         lat: 0.0,
-        lng: 0.0
+        lng: 0.0,
+        scaleControl: false,
+        zoomControl: false,
+        streetViewControl: false,
+        panControl: false
     });
-
 };
