@@ -147,13 +147,13 @@ body {
     font-size: 30vw;
 }
 
-#map-1-wrapper {
+#map-left-wrapper {
     float: left;
     width: 45vw;
     height: 80vh;
 }
 
-#map-2-wrapper {
+#map-right-wrapper {
     float: right;
     width: 45vw;
     height: 80vh;
@@ -164,6 +164,6 @@ body {
 }
 
 .map {
-    width: 90%;
-    height:90%;
+    width: 45vw;
+    height:75vh;
 }

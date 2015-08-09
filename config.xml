@@ -37,7 +37,7 @@
   <gap:plugin name="org.apache.cordova.splashscreen"/>
   <gap:plugin name="org.apache.cordova.vibration"/>
   <icon src="icon.png"/>
-  <access origin="*"/>
+  <access origin="*" />
   <plugin name="cordova-plugin-whitelist" version="1"/>
   <allow-intent href="http://*/*"/>
   <allow-intent href="https://*/*"/>

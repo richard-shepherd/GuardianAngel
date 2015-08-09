@@ -32,9 +32,7 @@
         <link rel="stylesheet" href="css/GuardianAngel.css">
 
         <!-- Javascript libraries loaded in head -->
-        <script src="https://maps.googleapis.com/maps/api/js"></script>
         <script src="js/jquery/jquery-2.1.4.min.js"></script>
-        <script src="js/gmaps/gmaps.js"></script>
 
         <title>Guardian Angel</title>
     </head>
@@ -97,14 +95,14 @@
                 <div class="header">Ride info</div>
                 <div class="slide-content">
 
-                    <div id="map-1-wrapper">
+                    <div id="map-left-wrapper">
                         <div class="map-label">Max left lean</div>
-                        <div id="map-1" class="map swiper-no-swiping"></div>
+                        <div id="map-left" class="map swiper-no-swiping"></div>
                     </div>
 
-                    <div id="map-2-wrapper">
+                    <div id="map-right-wrapper">
                         <div class="map-label">Max right lean</div>
-                        <div id="map-2" class="map swiper-no-swiping"></div>
+                        <div id="map-right" class="map swiper-no-swiping"></div>
                     </div>
 
                 </div>
@@ -150,14 +148,15 @@
 
     <!-- Javascript -->
     <script src="cordova.js"></script>
+    <script src="https://maps.googleapis.com/maps/api/js?sensor=false"></script>
+    <script src="js/gmaps/gmaps.js"></script>
     <script src="js/swiper/js/swiper.min.js"></script>
     <script src="js/raphael/raphael.js"></script>
     <script src="js/raphael/wso2vis.ctrls.js"></script>
     <script src="js/LeanCalculator.js"></script>
     <script src="js/GuardianAngel.js"></script>
     <script>
-        // Runs the code that manages the app...
-        var guardianAngel = new GuardianAngel();
+        var guardianAngel = new GuardianAngel();;
     </script>
 
     </body>

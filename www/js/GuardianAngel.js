@@ -104,6 +104,7 @@ function GuardianAngel() {
         this.clearCrashDetection();
     } catch(err) {
         this.error(err.message);
+        alert(err.message);
     }
 }
 
@@ -185,10 +186,7 @@ GuardianAngel.prototype.onLeanAngleUpdated = function(leanAngle) {
         var absLean = Math.abs(leanAngle);
         if(leanAngle < 0.0) {
             if(absLean > this.maxLeftLean.leanAngle) {
-                this.maxLeftLean.leanAngle = absLean;
-                this.maxLeftLean.latitude = this.currentLatitude;
-                this.maxLeftLean.longitude = this.currentLongitude;
-                $("#max-left-lean").text(absLean.toFixed(1));
+                this.updateMaxLeftLean(absLean);
             }
         } else {
             if(absLean > this.maxRightLean.leanAngle) {
@@ -201,6 +199,28 @@ GuardianAngel.prototype.onLeanAngleUpdated = function(leanAngle) {
     } catch(err) {
         this.error(err.message);
     }
+};
+
+/**
+ * updateMaxLeftLean
+ * -----------------
+ */
+GuardianAngel.prototype.updateMaxLeftLean = function(leanAngle) {
+    // We update the information we hold...
+    this.maxLeftLean.leanAngle = leanAngle;
+    this.maxLeftLean.latitude = this.currentLatitude;
+    this.maxLeftLean.longitude = this.currentLongitude;
+
+    // We show the max lean angle on the Ride page...
+    $("#max-left-lean").text(leanAngle.toFixed(1));
+
+    // We update the map...
+    this.maxLeftLeanMap.removeMarkers();
+    this.maxLeftLeanMap.setCenter(this.currentLatitude, this.currentLongitude);
+    this.maxLeftLeanMap.addMarker({
+        lat: this.currentLatitude,
+        lng: this.currentLongitude
+    });
 };
 
 /**
@@ -455,14 +475,24 @@ GuardianAngel.prototype.stopAlertSound = function() {
 GuardianAngel.prototype.createMaps = function() {
     this.log("Creating maps.");
 
+    //var myLatlng = new google.maps.LatLng(54.2034757, -4.632041);
+    //var mapOptions = {
+    //    center : myLatlng,
+    //    zoom : 18,
+    //    mapTypeId : google.maps.MapTypeId.ROADMAP
+    //};
+    //this.maxLeftLeanMap = new google.maps.Map(document.getElementById("map-left"), mapOptions);
+    //this.maxRightLeanMap = new google.maps.Map(document.getElementById("map-right"), mapOptions);
+
+
     this.maxLeftLeanMap = new GMaps({
-        div: "#map-1",
+        div: "#map-left",
         lat: 0.0,
         lng: 0.0
     });
 
     this.maxRightLeanMap = new GMaps({
-        div: "#map-2",
+        div: "#map-right",
         lat: 0.0,
         lng: 0.0
     });
