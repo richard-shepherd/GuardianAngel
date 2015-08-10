@@ -1,3 +1,11 @@
+// TODO: Store settings
+// TODO: edit settings - including reinitializing alert lean angle if changed
+// TODO: Make better splash screen
+// TODO: Icon
+// TODO: Make work in Portrait
+// TODO: Efficiency
+// TODO: Don't use === for numbers (all numbers are floats)
+
 /**
  * MaxLeanInfo
  * -----------
@@ -116,12 +124,6 @@ function GuardianAngel() {
 
         // We set the crash-detection page to its default, ie no crash detected...
         this.clearCrashDetection();
-
-        // TODO: TEST, remove this...
-        this.settings.phoneNumbers = "+447624474958,+447624309204";
-        this.settings.warningSecondsBeforeSendingTexts = 5;
-        this.settings.sendTextsEveryNSeconds = 10;
-        //this.onCrashDetected();
     } catch(err) {
         this.error(err.message);
         alert(err.message);
@@ -453,6 +455,42 @@ GuardianAngel.prototype.clearCrashDetection = function() {
  */
 GuardianAngel.prototype.loadSettings = function() {
     this.log("Loading settings.")
+
+    // We load the fields in the settings...
+    for(var field in this.settings) {
+        var defaultValue = this.settings[field];
+        var defaultValueType = typeof(defaultValue);
+
+        // We try to load the setting...
+        var storedValue = localStorage.getItem(field);
+        if(storedValue === null) {
+            // The data is not stored, so we store the default...
+            localStorage.setItem(field, String(defaultValue));
+            this.log("Storing default value for settings field: " + field + "=" + defaultValue);
+        } else {
+            // The data is stored, so we use it - first converting it...
+            if(defaultValueType === "string") {
+                this.settings[field] = storedValue;
+            } else if(defaultValueType === "number"){
+                this.settings[field] = Number(storedValue);
+            } else {
+                this.error("Could not convert type for settings field: " + field);
+                continue;
+            }
+            this.log("Loaded settings field: " + field + "=" + this.settings[field]);
+        }
+    }
+};
+
+/**
+ * storeSettings
+ * -------------
+ * Stores the current value of the settings.
+ */
+GuardianAngel.prototype.storeSettings = function() {
+    for(var field in this.settings) {
+        localStorage.setItem(field, String(this.settings[field]));
+    }
 };
 
 /**
