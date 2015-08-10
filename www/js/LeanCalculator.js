@@ -64,6 +64,7 @@ function LeanCalculator(params) {
     });
 
     // We run a timer to sample the lean angle and produce the moving average...
+    // TODO: Use setTimeout, and then restart each calc? To leave processing time for other actions if the calculation is slow?
     window.setInterval(function() {
         that.onTimer();
     }, this._params.sampleSpeedMS);
@@ -114,6 +115,7 @@ LeanCalculator.prototype.onTimer = function() {
     }
 
     // We calculate the moving average...
+    // TODO: push and pop values, and calculate fully every 100(?) times around?
     var total = 0.0;
     for(var i=0; i<numberSamples; ++i) {
         total += this._samples[i];

@@ -36,7 +36,8 @@ function GuardianAngel() {
             warningSecondsBeforeSendingTexts: 30,
             numberTexts: 3,
             sendTextsEveryNSeconds: 60,
-            speedUnits: "mph"
+            speedUnits: "mph",
+            crashMessage: "I have come off my motorcycle."
         };
         this.loadSettings();
 
@@ -63,7 +64,9 @@ function GuardianAngel() {
         this.alertPlaying = false;
 
         // We find the platform, in particular noting whether it is Android (as
-        // media files are handled differently)...
+        // media files are handled differently) or Windows (where I am testing in
+        // the browser)...
+        this.isWindows = false;
         this.isAndroid = false;
         this.findPlatform();
 
@@ -71,6 +74,7 @@ function GuardianAngel() {
         // and a timer to do the countdown...
         this.textCountdownSeconds = 0;
         this.textCountdownTimer = null;
+        this.numberTextsRemaining = 0;
 
         // We create maps to show max lean angles...
         this.createMaps();
@@ -112,6 +116,12 @@ function GuardianAngel() {
 
         // We set the crash-detection page to its default, ie no crash detected...
         this.clearCrashDetection();
+
+        // TODO: TEST, remove this...
+        this.settings.phoneNumbers = "+447624474958,+447624309204";
+        this.settings.warningSecondsBeforeSendingTexts = 5;
+        this.settings.sendTextsEveryNSeconds = 10;
+        //this.onCrashDetected();
     } catch(err) {
         this.error(err.message);
         alert(err.message);
@@ -237,6 +247,8 @@ GuardianAngel.prototype.updateMaxLeanAngle = function(leanAngle, leanInfo) {
  */
 GuardianAngel.prototype.onCrashDetected = function() {
     try {
+        this.log("Crash detected.")
+
         // TODO: this can be called while crash detection is running. Check this.
         // We show the crash detection page...
         this.swiper.slideTo(GuardianAngel.Slide.CRASH_DETECTION);
@@ -248,9 +260,10 @@ GuardianAngel.prototype.onCrashDetected = function() {
         // We play the alert sound...
         this.playAlertSound();
 
-        // We start the countdown timer...
+        // We start the countdown timer for sending texts...
         var that = this;
         this.textCountdownSeconds = this.settings.warningSecondsBeforeSendingTexts;
+        this.numberTextsRemaining = this.settings.numberTexts;
         this.textCountdownTimer = setInterval(
             function() {
                 that.onTextCountdownTimer();
@@ -268,11 +281,71 @@ GuardianAngel.prototype.onCrashDetected = function() {
  */
 GuardianAngel.prototype.onTextCountdownTimer = function() {
     try {
-        this.settings.warningSecondsBeforeSendingTexts--;
-        $("#crash-detected-timer").text(this.settings.warningSecondsBeforeSendingTexts);
+
+        if(this.numberTextsRemaining == 0) {
+            this.clearCrashDetection();
+            return;
+        }
+
+        // We count down the timer...
+        this.textCountdownSeconds--;
+        $("#crash-detected-timer").text(this.textCountdownSeconds);
+
+        if(this.textCountdownSeconds > 0) {
+            return;
+        }
+
+        // The countdown has reached zero, so we send texts...
+        this.sendTexts();
     } catch(err) {
         this.error(err.message);
     }
+};
+
+/**
+ * sendTexts
+ * ---------
+ * Sends texts to the list of numbers specified in the settings, to say that we have crashed.
+ */
+GuardianAngel.prototype.sendTexts = function()  {
+    // We create the message to send, including the current location...
+    var latlongString = this.currentLatitude + "+" + this.currentLongitude;
+    var message = this.settings.crashMessage +
+        " https://maps.google.com/maps?q=" +
+        this.currentLatitude + "," + this.currentLongitude;
+
+    // We parse the collection of numbers...
+    var phoneNumbers = this.settings.phoneNumbers.split(",");
+    for(var i=0; i<phoneNumbers.length; ++i) {
+        var phoneNumber = phoneNumbers[i];
+        this.log("Sending text to: " + phoneNumber + ". Message: " + message);
+
+        // We do not send a text if we are running the the desktop (test) browser...
+        if(this.isWindows) {
+            continue;
+        }
+
+        var smsOptions = {
+            replaceLineBreaks: false,
+            android: {intent: ''}  // Sends SMS without open any other app
+        };
+        sms.send(
+            phoneNumber,
+            message,
+            smsOptions,
+            function() {
+                // On success...
+                this.log("SMS sent");
+            },
+            function() {
+                // On error...
+                this.error("SMS failed to send.");
+            });
+    }
+
+    // We may be sending more texts...
+    this.numberTextsRemaining--;
+    this.textCountdownSeconds = this.settings.sendTextsEveryNSeconds;
 };
 
 /**
@@ -452,7 +525,9 @@ GuardianAngel.prototype.findPlatform = function() {
     this.log("Platform: " + platform);
 
     this.isAndroid = platform.toUpperCase().indexOf("ANDROID") > -1;
+    this.isWindows = platform.toUpperCase().indexOf("WINDOWS NT") > -1;
     this.log("isAndroid: " + this.isAndroid);
+    this.log("isWindows: " + this.isWindows);
 };
 
 /**
@@ -461,6 +536,14 @@ GuardianAngel.prototype.findPlatform = function() {
  * Plays the alert sound on a loop.
  */
 GuardianAngel.prototype.playAlertSound = function() {
+    this.log("Playing alert sound.");
+
+    // If we are testing on the browser in Windows, we do not play sounds, as
+    // the PhoneGap Media object is not available)...
+    if(this.isWindows) {
+        return;
+    }
+
     // We stop any existing alert sound...
     this.stopAlertSound();
 
