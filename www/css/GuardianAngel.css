@@ -35,6 +35,24 @@ body {
     vertical-align: middle;
 }
 
+.setting-div {
+    font-size: 3vw;
+    height: 12vh;
+}
+
+.setting-label {
+    display: inline-block;
+    min-width: 35vw;
+}
+
+.settings-text {
+    font-size: 3vw;
+}
+
+.settings-number {
+    font-size: 3vw;
+}
+
 #start-button-wrapper {
     text-align: center;
 }

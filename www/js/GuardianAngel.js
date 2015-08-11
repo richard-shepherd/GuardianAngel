@@ -5,6 +5,7 @@
 // TODO: Make work in Portrait
 // TODO: Efficiency
 // TODO: Don't use === for numbers (all numbers are floats)
+// TODO: Better styles for the Settings screen
 
 /**
  * MaxLeanInfo
@@ -37,19 +38,25 @@ function GuardianAngel() {
     try{
         this.log("Guardian Angel starting.");
 
+        var that = this;
+
         // We load the settings...
         this.settings = {
             phoneNumbers: "",
-            crashLeanAngle: 60.0,
+            crashLeanAngle: 50.0,
             warningSecondsBeforeSendingTexts: 30,
             numberTexts: 3,
             sendTextsEveryNSeconds: 60,
             speedUnits: "mph",
-            crashMessage: "I have come off my motorcycle."
+            crashMessage: "My bike has fallen over!"
         };
         this.loadSettings();
+        this.showSettings();
 
-        var that = this;
+        // We register events to be triggered when settings are changed, so
+        // we can update and save them...
+        $(".setting").keyup(function(eventData){ that.onSettingsUpdated(); });
+        $(".setting").click(function(eventData){ that.onSettingsUpdated(); });
 
         // True if the ride has started, ie the Start button has been pressed...
         this.rideStarted = false;
@@ -649,4 +656,59 @@ GuardianAngel.prototype.createMaps = function() {
         streetViewControl: false,
         panControl: false
     });
+};
+
+/**
+ * onSettingsUpdated
+ * -----------------
+ * Called when any settings are edited. We update the settings and store them.
+ */
+GuardianAngel.prototype.onSettingsUpdated = function() {
+    // We update the settings...
+    this.settings.phoneNumbers = this.getSetting("settings-phone-numbers", "text");
+    this.settings.crashLeanAngle = this.getSetting("settings-crash-lean-angle", "number");
+    this.settings.warningSecondsBeforeSendingTexts = this.getSetting("settings-warning-seconds", "number");
+    this.settings.numberTexts = this.getSetting("settings-number-texts", "number");
+    this.settings.sendTextsEveryNSeconds = this.getSetting("settings-text-interval", "number");
+    this.settings.speedUnits = this.getSetting("settings-speed-units", "radio");
+    this.settings.crashMessage = this.getSetting("settings-crash-message", "text");
+
+    // And store them...
+    this.storeSettings();
+};
+
+/**
+ * showSettings
+ * ------------
+ * Shows the settings.
+ */
+GuardianAngel.prototype.showSettings = function() {
+    $("input:text[name=settings-phone-numbers]").val(this.settings.phoneNumbers);
+    $("input:text[name=settings-crash-lean-angle]").val(this.settings.crashLeanAngle);
+    $("input:text[name=settings-warning-seconds]").val(this.settings.warningSecondsBeforeSendingTexts);
+    $("input:text[name=settings-number-texts]").val(this.settings.numberTexts);
+    $("input:text[name=settings-text-interval]").val(this.settings.sendTextsEveryNSeconds);
+    $("input:radio[name=settings-speed-units]").val([this.settings.speedUnits]);
+    $("input:text[name=settings-crash-message]").val(this.settings.crashMessage);
+};
+
+/**
+ * getSetting
+ * ----------
+ * Reads one of the inputs from the Settings screen.
+ */
+GuardianAngel.prototype.getSetting = function(name, type) {
+    if(type === "radio") {
+        return $("input:radio[name=" + name + "]:checked").val();
+    }
+
+    if(type === "text") {
+        return $("input:text[name=" + name + "]").val();
+    }
+
+    if(type === "number") {
+        return Number($("input:text[name=" + name + "]").val());
+    }
+
+    this.error("Failed to read setting: " + name + ". Requested type: " + type);
 };
