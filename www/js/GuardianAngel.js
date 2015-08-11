@@ -6,6 +6,7 @@
 // TODO: Efficiency
 // TODO: Don't use === for numbers (all numbers are floats)
 // TODO: Better styles for the Settings screen
+// TODO: Move Settings screen up so that you can see what you are editing.
 
 /**
  * MaxLeanInfo
