@@ -12,21 +12,25 @@
             padding: 0px;
             background-color: black;
             color: white;
+            width: 100vw;
+            height: 100vh;
         }
-        #angel {
-            position: fixed;
+
+        img {
+            position: absolute;
             top: 50%;
             left: 50%;
-            /* bring your own prefixes */
-            transform: translate(-50%, -50%);
+            width: 1366px;
+            height: 768px;
+            margin-left: -683px; /* Half the width */
+            margin-top: -384px; /* Half the height */
         }
     </style>
 
     <title>Guardian Angel - Loading</title>
 </head>
 <body>
-    <img id="angel" src="img/angel.png">
-
+    <img src="img/angel.png">
 
     <script src="cordova.js"></script>
     <script>
