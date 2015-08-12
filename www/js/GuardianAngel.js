@@ -3,12 +3,10 @@
 // TODO: Make work in Portrait
 // TODO: Efficiency
 // TODO: Don't use === for numbers (all numbers are floats)
-// TODO: Better styles for the Settings screen
 // TODO: Show dial in red if exceeding max angle?
 // TODO: Show max angles in Ride Info screen
 // TODO: Reduce permissions: phone status&identity, record audio, SD card(?), audio settings
 // TODO: Show settings at startup, or hide the settings screen
-// TODO: Change name to Guardian Angel (with space)
 // TODO: Add a licence to GitHub: code cannot be reused commercially
 
 /**
