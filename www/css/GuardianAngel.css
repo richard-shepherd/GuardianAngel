@@ -35,6 +35,10 @@ body {
     vertical-align: middle;
 }
 
+#settings-slide {
+    visibility: hidden;
+}
+
 .setting-div {
     font-size: 3vw;
     height: 12vh;

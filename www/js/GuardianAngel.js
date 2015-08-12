@@ -1,12 +1,7 @@
-// TODO: Make better splash screen
-// TODO: Icon
 // TODO: Make work in Portrait
 // TODO: Efficiency
-// TODO: Don't use === for numbers (all numbers are floats)
-// TODO: Show dial in red if exceeding max angle?
 // TODO: Show max angles in Ride Info screen
 // TODO: Reduce permissions: phone status&identity, record audio, SD card(?), audio settings
-// TODO: Show settings at startup, or hide the settings screen
 // TODO: Add a licence to GitHub: code cannot be reused commercially
 
 /**
@@ -133,6 +128,9 @@ function GuardianAngel() {
 
         // We set the crash-detection page to its default, ie no crash detected...
         this.clearCrashDetection();
+
+        // We show the screen...
+        $("#settings-slide").css("visibility", "visible");
     } catch(err) {
         this.error(err.message);
         alert(err.message);
@@ -293,7 +291,7 @@ GuardianAngel.prototype.onCrashDetected = function() {
 GuardianAngel.prototype.onTextCountdownTimer = function() {
     try {
 
-        if(this.numberTextsRemaining == 0) {
+        if(this.numberTextsRemaining === 0) {
             this.clearCrashDetection();
             return;
         }
