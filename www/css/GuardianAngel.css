@@ -43,17 +43,28 @@ body {
 .setting-label {
     display: inline-block;
     min-width: 35vw;
+    color: #F0F0F0
+}
+
+.settings-radio-button-text {
+    color: #EEFFEE;
 }
 
 .setting-div input[type=text] {
     font-size: 3vw;
     width: 50vw;
+    background: transparent;
+    color: #EEFFEE;
+    border: none;
+    border-bottom: 1px dashed #83A4C5;
+    outline: none;
+    padding: 0px 0px 0px 0px;
 }
 
 .setting-div input[type=radio] {
     border: 0px;
-    width: 2.5vw;
-    height: 2.5vw;
+    width: 2.8vw;
+    height: 2.8vw;
 }
 
 #start-button-wrapper {
@@ -107,7 +118,7 @@ body {
 
 #gps-accuracy {
     font-family: SevenSegment;
-    font-size: 3vw;
+    font-size: 3.2vw;
 }
 
 #gps-speed-wrapper {
