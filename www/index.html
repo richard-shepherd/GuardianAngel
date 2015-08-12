@@ -6,10 +6,26 @@
     <!-- Javascript libraries loaded in head -->
     <script src="js/jquery/jquery-2.1.4.min.js"></script>
 
+    <style>
+        body {
+            margin: 0px;
+            padding: 0px;
+            background-color: black;
+            color: white;
+        }
+        #angel {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            /* bring your own prefixes */
+            transform: translate(-50%, -50%);
+        }
+    </style>
+
     <title>Guardian Angel - Loading</title>
 </head>
 <body>
-    <img src="img/angel.jpg">
+    <img id="angel" src="img/angel.png">
 
 
     <script src="cordova.js"></script>
