@@ -157,3 +157,10 @@ LeanCalculator.prototype.checkForCrash = function(leanAngle) {
     }
 };
 
+/**
+ * setAlertAngle
+ * -------------
+ */
+LeanCalculator.prototype.setAlertAngle = function(alertAngle) {
+    this._params.alertAngle = alertAngle;
+};

@@ -1,12 +1,11 @@
-// TODO: Store settings
-// TODO: edit settings - including reinitializing alert lean angle if changed
 // TODO: Make better splash screen
 // TODO: Icon
 // TODO: Make work in Portrait
 // TODO: Efficiency
 // TODO: Don't use === for numbers (all numbers are floats)
 // TODO: Better styles for the Settings screen
-// TODO: Move Settings screen up so that you can see what you are editing.
+// TODO: Show dial in red if exceeding max angle?
+// TODO: Show max angles in Ride Info screen
 
 /**
  * MaxLeanInfo
@@ -674,8 +673,13 @@ GuardianAngel.prototype.onSettingsUpdated = function() {
     this.settings.speedUnits = this.getSetting("settings-speed-units", "radio");
     this.settings.crashMessage = this.getSetting("settings-crash-message", "text");
 
-    // And store them...
+    // We store them...
     this.storeSettings();
+
+    // We update the alert angle, used for detecting a crash...
+    if(this.settings.crashLeanAngle > 0) {
+        this.leanCalculator.setAlertAngle(this.settings.crashLeanAngle);
+    }
 };
 
 /**
