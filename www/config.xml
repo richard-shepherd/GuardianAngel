@@ -1,5 +1,5 @@
 <widget xmlns="http://www.w3.org/ns/widgets" xmlns:gap="http://phonegap.com/ns/1.0" id="richardsshepherd.apps.GuardianAngel" version="1.0.0">
-  <name>GuardianAngel</name>
+  <name>Guardian Angel</name>
   <description>Crash detection and lean-angle measurement for motorcycles.</description>
   <author href="https://github.com/richard-shepherd/GuardianAngel" email="richard.s.shepherd@gmail.com">Richard Shepherd</author>
   <content src="index.html"/>

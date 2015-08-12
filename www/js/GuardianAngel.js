@@ -8,6 +8,7 @@
 // TODO: Show max angles in Ride Info screen
 // TODO: Reduce permissions: phone status&identity, record audio, SD card(?), audio settings
 // TODO: Show settings at startup, or hide the settings screen
+// TODO: Change name to Guardian Angel (with space)
 
 /**
  * MaxLeanInfo
