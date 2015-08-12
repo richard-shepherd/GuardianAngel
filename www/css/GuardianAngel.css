@@ -11,7 +11,7 @@ body {
 }
 
 .swiper-container {
-    height: 100vh;
+    min-height: 100vh;
 }
 
 .slide-content {
@@ -45,12 +45,15 @@ body {
     min-width: 35vw;
 }
 
-.settings-text {
+.setting-div input[type=text] {
     font-size: 3vw;
+    width: 50vw;
 }
 
-.settings-number {
-    font-size: 3vw;
+.setting-div input[type=radio] {
+    border: 0px;
+    width: 2.5vw;
+    height: 2.5vw;
 }
 
 #start-button-wrapper {
