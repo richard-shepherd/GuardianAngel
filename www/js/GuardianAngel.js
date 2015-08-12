@@ -68,8 +68,8 @@ function GuardianAngel() {
         this.leanAngleDialSignificantChange = 2.0;
 
         // The maximum lean angles recorded in a session...
-        this.maxLeftLeanInfo = new MaxLeanInfo($("#max-left-lean"));
-        this.maxRightLeanInfo = new MaxLeanInfo($("#max-right-lean"));
+        this.maxLeftLeanInfo = new MaxLeanInfo($(".max-left-lean"));
+        this.maxRightLeanInfo = new MaxLeanInfo($(".max-right-lean"));
 
         // The Media object that plays the alert sound when a crash is detected...
         this.alertSound = null;
