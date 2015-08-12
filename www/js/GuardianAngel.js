@@ -6,6 +6,8 @@
 // TODO: Better styles for the Settings screen
 // TODO: Show dial in red if exceeding max angle?
 // TODO: Show max angles in Ride Info screen
+// TODO: Reduce permissions: phone status&identity, record audio, contacts, SD card(?), find accounts, vibration, audio settings
+// TODO: Show settings at startup, or hide the settings screen
 
 /**
  * MaxLeanInfo
