@@ -1,5 +1,5 @@
 // TODO: Make work in Portrait
-// TODO: Efficiency
+// TODO: LeanCalculator efficiency
 // TODO: Add a licence to GitHub: code cannot be reused commercially
 // TODO: Saw error GMaps is not defined: Happens when there is no network access to load google maps
 
