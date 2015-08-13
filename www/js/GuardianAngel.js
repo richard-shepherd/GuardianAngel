@@ -75,6 +75,9 @@ function GuardianAngel() {
         this.alertSound = null;
         this.alertPlaying = false;
 
+        // True if a crash has been detected...
+        this.crashDetected = false;
+
         // We find the platform, in particular noting whether it is Android (as
         // media files are handled differently) or Windows (where I am testing in
         // the browser)...
@@ -244,7 +247,7 @@ GuardianAngel.prototype.updateMaxLeanAngle = function(leanAngle, leanInfo) {
     // We set a timer to update the screen, so that we don't update to
     // often as lean angles are changing...
     if(this.mapUpdateTimers[leanInfo.elementName] !== null) {
-        // A timer is already running for this map...
+        // A timer is already running for this direction...
         return;
     }
 
@@ -269,9 +272,15 @@ GuardianAngel.prototype.updateMaxLeanAngle = function(leanAngle, leanInfo) {
  */
 GuardianAngel.prototype.onCrashDetected = function() {
     try {
+        if(this.crashDetected) {
+            // We have already detected a crash, so we don't start
+            // new timers etc...
+            return;
+        }
+
+        this.crashDetected = true;
         this.log("Crash detected.")
 
-        // TODO: this can be called while crash detection is running. Check this.
         // We show the crash detection page...
         this.swiper.slideTo(GuardianAngel.Slide.CRASH_DETECTION);
         $("#crash-not-detected-text").hide();
@@ -462,6 +471,7 @@ GuardianAngel.prototype.clearCrashDetection = function() {
     $("#crash-detected-button-wrapper").hide();
     $("#crash-detected-timer-text").hide();
     this.stopAlertSound();
+    this.crashDetected = false;
     if(this.textCountdownTimer) {
         clearInterval(this.textCountdownTimer);
         this.textCountdownTimer = null;
