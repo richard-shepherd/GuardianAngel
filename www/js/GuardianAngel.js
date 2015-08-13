@@ -1,8 +1,7 @@
 // TODO: Make work in Portrait
 // TODO: Efficiency
-// TODO: Show max angles in Ride Info screen
-// TODO: Reduce permissions: phone status&identity, record audio, SD card(?), audio settings
 // TODO: Add a licence to GitHub: code cannot be reused commercially
+// TODO: Saw error GMaps is not defined: Happens when there is no network access to load google maps
 
 /**
  * MaxLeanInfo
@@ -10,11 +9,12 @@
  * A small class holding information about a maximum lean angle and where it occurred.
  * @constructor
  */
-function MaxLeanInfo(element) {
+function MaxLeanInfo(elementName) {
+    this.elementName = elementName;
     this.leanAngle = 0.0;
     this.latitude = 0.0;
     this.longitude = 0.0;
-    this.element  = element;
+    this.element  = $(elementName);
     this.map = null;
 }
 MaxLeanInfo.prototype.clear = function() {
@@ -68,8 +68,8 @@ function GuardianAngel() {
         this.leanAngleDialSignificantChange = 2.0;
 
         // The maximum lean angles recorded in a session...
-        this.maxLeftLeanInfo = new MaxLeanInfo($(".max-left-lean"));
-        this.maxRightLeanInfo = new MaxLeanInfo($(".max-right-lean"));
+        this.maxLeftLeanInfo = new MaxLeanInfo(".max-left-lean");
+        this.maxRightLeanInfo = new MaxLeanInfo(".max-right-lean");
 
         // The Media object that plays the alert sound when a crash is detected...
         this.alertSound = null;
@@ -88,7 +88,9 @@ function GuardianAngel() {
         this.textCountdownTimer = null;
         this.numberTextsRemaining = 0;
 
-        // We create maps to show max lean angles...
+        // We create maps to show max lean angles, and timers to avoid updating them
+        // too fast...
+        this.mapUpdateTimers = {};
         this.createMaps();
 
         // We create the "swiper" which shows the slides...
@@ -239,14 +241,25 @@ GuardianAngel.prototype.updateMaxLeanAngle = function(leanAngle, leanInfo) {
     leanInfo.latitude = this.currentLatitude;
     leanInfo.longitude = this.currentLongitude;
 
-    // We show the max lean angle on the Ride page...
-    leanInfo.element.text(leanAngle.toFixed(1));
+    // We set a timer to update the screen, so that we don't update to
+    // often as lean angles are changing...
+    if(this.mapUpdateTimers[leanInfo.elementName] !== null) {
+        // A timer is already running for this map...
+        return;
+    }
 
-    // TODO: Maybe update the map on a timer to avoid too many quick updates.
-    // We update the map...
-    leanInfo.map.removeMarkers();
-    leanInfo.map.setCenter(this.currentLatitude, this.currentLongitude);
-    leanInfo.map.addMarker({lat: this.currentLatitude, lng: this.currentLongitude});
+    var that = this;
+    this.mapUpdateTimers[leanInfo.elementName] = setTimeout(function() {
+        // We show the max lean angle on the Ride page...
+        leanInfo.element.text(leanInfo.leanAngle.toFixed(1));
+
+        // We update the map...
+        leanInfo.map.removeMarkers();
+        leanInfo.map.setCenter(leanInfo.latitude, leanInfo.longitude);
+        leanInfo.map.addMarker({lat: leanInfo.latitude, lng: leanInfo.longitude});
+
+        that.mapUpdateTimers[leanInfo.elementName] = null;
+    }, 1000);
 };
 
 /**
@@ -656,6 +669,10 @@ GuardianAngel.prototype.createMaps = function() {
         streetViewControl: false,
         panControl: false
     });
+
+    // Timers for updating maps...
+    this.mapUpdateTimers[".max-left-lean"] = null;
+    this.mapUpdateTimers[".max-right-lean"] = null;
 };
 
 /**
