@@ -52,8 +52,9 @@ function GuardianAngel() {
 
         // We register events to be triggered when settings are changed, so
         // we can update and save them...
-        $(".setting").keyup(function(eventData){ that.onSettingsUpdated(); });
-        $(".setting").click(function(eventData){ that.onSettingsUpdated(); });
+        var settingElements = $(".setting");
+        settingElements.keyup(function(eventData){ that.onSettingsUpdated(); });
+        settingElements.click(function(eventData){ that.onSettingsUpdated(); });
 
         // True if the ride has started, ie the Start button has been pressed...
         this.rideStarted = false;
@@ -115,7 +116,7 @@ function GuardianAngel() {
         });
 
         // We start the GPS...
-        this.log("Starting GPS.")
+        this.log("Starting GPS.");
         this.currentLatitude = 0.0;
         this.currentLongitude = 0.0;
         this.gps = navigator.geolocation.watchPosition(
@@ -339,8 +340,9 @@ GuardianAngel.prototype.onTextCountdownTimer = function() {
  * Sends texts to the list of numbers specified in the settings, to say that we have crashed.
  */
 GuardianAngel.prototype.sendTexts = function()  {
+    var that = this;
+
     // We create the message to send, including the current location...
-    var latlongString = this.currentLatitude + "+" + this.currentLongitude;
     var message = this.settings.crashMessage +
         " https://maps.google.com/maps?q=" +
         this.currentLatitude + "," + this.currentLongitude;
@@ -366,11 +368,11 @@ GuardianAngel.prototype.sendTexts = function()  {
             smsOptions,
             function() {
                 // On success...
-                this.log("SMS sent");
+                that.log("SMS sent");
             },
             function() {
                 // On error...
-                this.error("SMS failed to send.");
+                that.error("SMS failed to send.");
             });
     }
 
@@ -484,7 +486,7 @@ GuardianAngel.prototype.clearCrashDetection = function() {
  * Loads settings, and sets them to defaults if they have not previously been stored.
  */
 GuardianAngel.prototype.loadSettings = function() {
-    this.log("Loading settings.")
+    this.log("Loading settings.");
 
     // We load the fields in the settings...
     for(var field in this.settings) {
@@ -535,13 +537,14 @@ GuardianAngel.prototype.onGPSSuccess = function(position) {
         // We show the GPS accuracy in meters, and color code it.
         // Accuracy better that 10m usually means that you have a good GPS fix.
         var accuracy = coords.accuracy;
-        $("#gps-accuracy").text(accuracy.toFixed(1));
+        var gpsAccuracyElement = $("#gps-accuracy");
+        gpsAccuracyElement.text(accuracy.toFixed(1));
         if(accuracy > 30) {
-            $("#gps-accuracy").css("color", "red");
+            gpsAccuracyElement.css("color", "red");
         } else if(accuracy > 9.9) {
-            $("#gps-accuracy").css("color", "orange");
+            gpsAccuracyElement.css("color", "orange");
         } else {
-            $("#gps-accuracy").css("color", "green");
+            gpsAccuracyElement.css("color", "green");
         }
 
         // We store the current latitude and longitude...
