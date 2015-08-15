@@ -1,7 +1,16 @@
 // TODO: Make work in Portrait
-// TODO: LeanCalculator efficiency
+// TODO: RideDataCalculator efficiency
 // TODO: Add a licence to GitHub: code cannot be reused commercially
 // TODO: Saw error GMaps is not defined: Happens when there is no network access to load google maps
+// TODO: If speed is zero and angle > (say) 20 then you've crashed
+// TODO: Fit bounds of ride-info map
+// TODO: Change ride info to the whole ride with color coded lean angle and speed
+// TODO: Option to switch ride-info map between lean and speed
+// TODO: Add overlays when lines are clicked on showing lean and speed
+// TODO: Don't record lean when speed less than (say) 10mph (configurable)
+// TODO: Zoom to max speed
+// TODO: Zoom to max lean (left and right)
+// TODO: Optimization - don't record points unless there is a significant change(?)
 
 /**
  * MaxLeanInfo
@@ -59,10 +68,6 @@ function GuardianAngel() {
         // True if the ride has started, ie the Start button has been pressed...
         this.rideStarted = false;
 
-        // The lean angle when the Start button is pressed. We show lean angles
-        // relative to this, to compensate for the device not being exactly straight.
-        this.centeredLeanAngle = 0.0;
-
         // We hold the last lean-angle shown in the dial, and a movement tolerance. This
         // avoids redrawing the dial for small movements...
         this.previousLeanAngleDisplayed = 999.9;
@@ -106,11 +111,11 @@ function GuardianAngel() {
         this.leanAngleDial = null;
         this.createLeanAngleDial();
 
-        // We start the lean-angle calculator.
-        // This subscribes to the lean-angle and smooths it...
-        this.log("Creating the lean-angle calculator.");
-        this.leanCalculator = new LeanCalculator({
-            callback: function(leanAngle) { that.onLeanAngleUpdated(leanAngle); },
+        // We start the ride-data calculator.
+        // This subscribes to lean-angle, position and speed...
+        this.log("Creating the ride-data calculator.");
+        this.rideDataCalculator = new RideDataCalculator({
+            callback: function(leanAngle) { that.onRideDataUpdated(leanAngle); },
             alertCallback: function() { that.onCrashDetected(); },
             alertAngle: this.settings.crashLeanAngle
         });
@@ -197,20 +202,14 @@ GuardianAngel.prototype.createLeanAngleDial = function() {
 };
 
 /**
- * onLeanAngleUpdated
+ * onRideDataUpdated
  * ------------------
- * Called with the latest lean angle.
+ * Called with the latest lean angle, position and speed.
  */
-GuardianAngel.prototype.onLeanAngleUpdated = function(leanAngle) {
+GuardianAngel.prototype.onRideDataUpdated = function(rideData) {
     try {
-        // We use the current lean angle as the "center" angle until the Start
-        // button has been pressed, in case the device is not exactly central...
-        if(this.rideStarted === false) {
-            this.centeredLeanAngle = leanAngle;
-        }
-        leanAngle -= this.centeredLeanAngle;
-
         // We only show the new angle on the dial if there has been a significant change...
+        var leanAngle = rideData.leanAngle;
         if(Math.abs(leanAngle - this.previousLeanAngleDisplayed) > this.leanAngleDialSignificantChange) {
             this.leanAngleDial.setValue(leanAngle);
             this.previousLeanAngleDisplayed = leanAngle;
@@ -222,7 +221,6 @@ GuardianAngel.prototype.onLeanAngleUpdated = function(leanAngle) {
         if(leanAngle < 0.0) {
             if(absLean > this.maxLeftLeanInfo.leanAngle) {
                 this.updateMaxLeanAngle(absLean, this.maxLeftLeanInfo);
-                //this.updateMaxLeftLean(absLean);
             }
         } else {
             if(absLean > this.maxRightLeanInfo.leanAngle) {
@@ -443,6 +441,9 @@ GuardianAngel.prototype.startRide = function() {
     // We clear the crash detection page...
     this.clearCrashDetection();
 
+    // We start measuring ride info, including lean and crash detection...
+    this.rideDataCalculator.start();
+
     this.rideStarted = true;
 };
 
@@ -453,6 +454,9 @@ GuardianAngel.prototype.startRide = function() {
  */
 GuardianAngel.prototype.stopRide = function() {
     this.rideStarted = false;
+
+    // We stop measuring ride info (including lean and crash detection)...
+    this.rideDataCalculator.stop();
 
     // We change the button to say "Start"..
     var startButtonElement = $("#start-button");
@@ -708,7 +712,7 @@ GuardianAngel.prototype.onSettingsUpdated = function() {
 
     // We update the alert angle, used for detecting a crash...
     if(this.settings.crashLeanAngle > 0) {
-        this.leanCalculator.setAlertAngle(this.settings.crashLeanAngle);
+        this.rideDataCalculator.setAlertAngle(this.settings.crashLeanAngle);
     }
 };
 
