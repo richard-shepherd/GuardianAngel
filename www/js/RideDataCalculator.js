@@ -20,6 +20,7 @@ function RideData() {
     this.speed = 0.0; // m/s
     this.latitude = 0.0;
     this.longitude = 0.0;
+    this.gpsAccuracy = 0.0;
 }
 
 
@@ -75,6 +76,7 @@ function RideDataCalculator(params) {
     // The array of recent samples. This is really more like a
     // circular buffer, with sampleIndex pointing to the current
     // position to insert data...
+    Logger.log("Lean angle calculator using moving average of " + this._params.numberSamples + " samples.");
     this._samples = [];
     this._sampleIndex = 0;
     for(var i=0; i<this._params.numberSamples; ++i) {
@@ -87,7 +89,19 @@ function RideDataCalculator(params) {
         that.onDeviceOrientation(eventData);
     });
 
+    // We start the GPS...
+    Logger.log("Starting GPS.");
+    this.currentLatitude = 0.0;
+    this.currentLongitude = 0.0;
+    this.currentSpeed = 0.0;
+    this.currentGPSAccuracy = 99.0;
+    this.gps = navigator.geolocation.watchPosition(
+        function(position) { that.onGPSSuccess(position); },
+        function(error) { that.onGPSError(error); },
+        { timeout: 30000, enableHighAccuracy: true });
+
     // We run a timer to sample the lean angle and produce the moving average...
+    Logger.log("Starting ride-data calculator timer.");
     window.setTimeout(function() {
         that.onTimer();
     }, this._params.sampleSpeedMS);
@@ -181,6 +195,11 @@ RideDataCalculator.prototype.onTimer = function() {
     if(this._callbackSampleCount >= this._params.callbackEveryNSamples) {
         var rideData = new RideData();
         rideData.leanAngle = leanAngle;
+        rideData.latitude = this.currentLatitude;
+        rideData.longitude = this.currentLongitude;
+        rideData.speed = this.currentSpeed;
+        rideData.gpsAccuracy = this.currentGPSAccuracy;
+
         this._params.callback(rideData);
         this._callbackSampleCount = 0;
     }
@@ -203,20 +222,26 @@ RideDataCalculator.prototype.onTimer = function() {
  */
 RideDataCalculator.prototype.checkForCrash = function(leanAngle) {
     leanAngle = Math.abs(leanAngle);
-    if(leanAngle > this._params.alertAngle && this._alertTimeoutTimer === null) {
-        // The angle has gone over the limit, and the timer is not running,
-        // so we start it...
-        var that = this;
-        this._alertTimeoutTimer = setTimeout(function() {
-            // The angle has been over the limit for the timeout, so we
-            // raise the alert...
-            that._params.alertCallback();
-        }, this._params.alertAfterSeconds * 1000);
-    } else if(leanAngle <= this._params.alertAngle && this._alertTimeoutTimer !== null) {
-        // The lean angle is less than the alert limit, and the timer is running.
-        // It looks like the alert may have been a blip...
-        clearTimeout(this._alertTimeoutTimer);
-        this._alertTimeoutTimer = null;
+    var speed = this.currentSpeed;
+
+    if(this._alertTimeoutTimer === null) {
+        // The alert timer is not running, so we check if we have the conditions
+        // for a crash...
+        if(leanAngle > this._params.alertAngle && speed < 1.0) {
+            // The angle is high and the bike is not moving, so this looks like a crash...
+            var that = this;
+            this._alertTimeoutTimer = setTimeout(function() {
+                // The angle has been over the limit for the timeout, so we raise the alert...
+                that._params.alertCallback();
+            }, this._params.alertAfterSeconds * 1000);
+        }
+    } else {
+        // The alert timer is running, so we check if the crash conditions no longer apply...
+        if(leanAngle <= this._params.alertAngle || speed >= 1.0) {
+            // It looks like the alert may have been a blip...
+            clearTimeout(this._alertTimeoutTimer);
+            this._alertTimeoutTimer = null;
+        }
     }
 };
 
@@ -227,3 +252,36 @@ RideDataCalculator.prototype.checkForCrash = function(leanAngle) {
 RideDataCalculator.prototype.setAlertAngle = function(alertAngle) {
     this._params.alertAngle = alertAngle;
 };
+
+/**
+ * onGPSSuccess
+ * ------------
+ * Called when we get updated GPS information.
+ */
+RideDataCalculator.prototype.onGPSSuccess = function(position) {
+    try {
+        var coords = position.coords;
+
+        // We store the current latitude, longitude and speed...
+        this.currentLatitude = coords.latitude;
+        this.currentLongitude = coords.longitude;
+        this.currentSpeed = coords.speed;
+        this.currentGPSAccuracy = coords.accuracy;
+    } catch(err) {
+        Logger.error(err.message);
+    }
+};
+
+/**
+ * onGPSError
+ * ----------
+ * Called if we get an error from the GPS.
+ */
+RideDataCalculator.prototype.onGPSError = function(error) {
+    try {
+        Logger.error("GPS error: " + error.message);
+    } catch(err) {
+        Logger.error(err.message);
+    }
+};
+

@@ -2,7 +2,6 @@
 // TODO: RideDataCalculator efficiency
 // TODO: Add a licence to GitHub: code cannot be reused commercially
 // TODO: Saw error GMaps is not defined: Happens when there is no network access to load google maps
-// TODO: If speed is zero and angle > (say) 20 then you've crashed
 // TODO: Fit bounds of ride-info map
 // TODO: Change ride info to the whole ride with color coded lean angle and speed
 // TODO: Option to switch ride-info map between lean and speed
@@ -11,6 +10,7 @@
 // TODO: Zoom to max speed
 // TODO: Zoom to max lean (left and right)
 // TODO: Optimization - don't record points unless there is a significant change(?)
+// TODO: Add logging to RideDataCalculator.
 
 /**
  * MinMaxRideData
@@ -84,6 +84,10 @@ function GuardianAngel() {
         // True if a crash has been detected...
         this.crashDetected = false;
 
+        // The most recent position...
+        this.currentLatitude = 0.0;
+        this.currentLongitude = 0.0;
+
         // We find the platform, in particular noting whether it is Android (as
         // media files are handled differently) or Windows (where I am testing in
         // the browser)...
@@ -114,15 +118,6 @@ function GuardianAngel() {
             alertCallback: function() { that.onCrashDetected(); },
             alertAngle: this.settings.crashLeanAngle
         });
-
-        // We start the GPS...
-        Logger.log("Starting GPS.");
-        this.currentLatitude = 0.0;
-        this.currentLongitude = 0.0;
-        this.gps = navigator.geolocation.watchPosition(
-            function(position) { that.onGPSSuccess(position); },
-            function(error) { that.onGPSError(error); },
-            { timeout: 30000, enableHighAccuracy: true });
 
         // We register the Start button click...
         Logger.log("Registering Start button click event.");
@@ -206,7 +201,7 @@ GuardianAngel.prototype.onRideDataUpdated = function(rideData) {
         // We update the stats...
         this.updateLeanAngles(rideData);
         this.updateSpeed(rideData);
-
+        this.updateGPSInfo(rideData);
 
 
 
@@ -216,13 +211,51 @@ GuardianAngel.prototype.onRideDataUpdated = function(rideData) {
 };
 
 /**
+ * updateGPSInfo
+ * -------------
+ * Updates latitude, longitude and GPS accuracy.
+ */
+GuardianAngel.prototype.updateGPSInfo = function(rideData) {
+    // We store the latest position for sending with crash-detection texts...
+    this.currentLatitude = rideData.latitude;
+    this.currentLongitude = rideData.longitude;
+
+    // We show the GPS accuracy in meters, and color code it.
+    // Accuracy better that 10m usually means that you have a good GPS fix.
+    var accuracy = rideData.gpsAccuracy;
+    var gpsAccuracyElement = $("#gps-accuracy");
+    gpsAccuracyElement.text(accuracy.toFixed(1));
+    if(accuracy > 30) {
+        gpsAccuracyElement.css("color", "red");
+    } else if(accuracy > 9.9) {
+        gpsAccuracyElement.css("color", "orange");
+    } else {
+        gpsAccuracyElement.css("color", "green");
+    }
+};
+
+/**
  * updateSpeed
  * -----------
  * Updates the speed stats and dial.
  */
 GuardianAngel.prototype.updateSpeed = function(rideData) {
-    // We update the screen...
-    $("#gps-speed").text(rideData.speed.toFixed(0));
+    // We show the speed, translating to either mph or kph...
+    var speed = 0.0;
+    var speedFactor = 0.0;
+    var speedUnitsElement = $("#gps-speed-units");
+    if(this.settings.speedUnits === "mph") {
+        speedFactor = 2.23694;
+        speedUnitsElement.text("mph");
+    } else if(this.settings.speedUnits === "kph") {
+        speedFactor = 3.6;
+        speedUnitsElement.text("kph");
+    }
+
+    if(rideData.speed) {
+        speed = rideData * speedFactor;
+    }
+    $("#gps-speed").text(speed.toFixed(0));
 
     // We update the max speed...
     if(rideData.speed > this.minMaxRideData.maxSpeed) {
@@ -258,38 +291,6 @@ GuardianAngel.prototype.updateLeanAngles = function(rideData) {
         }
     }
 };
-
-///**
-// * updateMaxLeanAngle
-// * ------------------
-// * Shows the max lean angle, and updates the map showing it.
-// */
-//GuardianAngel.prototype.updateMaxLeanAngle = function(leanAngle, leanInfo) {
-//    // We update the information we hold...
-//    leanInfo.leanAngle = leanAngle;
-//    leanInfo.latitude = this.currentLatitude;
-//    leanInfo.longitude = this.currentLongitude;
-//
-//    // We set a timer to update the screen, so that we don't update to
-//    // often as lean angles are changing...
-//    if(this.mapUpdateTimers[leanInfo.elementName] !== null) {
-//        // A timer is already running for this direction...
-//        return;
-//    }
-//
-//    var that = this;
-//    this.mapUpdateTimers[leanInfo.elementName] = setTimeout(function() {
-//        // We show the max lean angle on the Ride page...
-//        leanInfo.element.text(leanInfo.leanAngle.toFixed(1));
-//
-//        // We update the map...
-//        leanInfo.map.removeMarkers();
-//        leanInfo.map.setCenter(leanInfo.latitude, leanInfo.longitude);
-//        leanInfo.map.addMarker({lat: leanInfo.latitude, lng: leanInfo.longitude});
-//
-//        that.mapUpdateTimers[leanInfo.elementName] = null;
-//    }, 1000);
-//};
 
 /**
  * onCrashDetected
@@ -556,66 +557,6 @@ GuardianAngel.prototype.loadSettings = function() {
 GuardianAngel.prototype.storeSettings = function() {
     for(var field in this.settings) {
         localStorage.setItem(field, String(this.settings[field]));
-    }
-};
-
-/**
- * onGPSSuccess
- * ------------
- * Called when we get updated GPS information.
- */
-GuardianAngel.prototype.onGPSSuccess = function(position) {
-    try {
-        var coords = position.coords;
-
-        // We show the GPS accuracy in meters, and color code it.
-        // Accuracy better that 10m usually means that you have a good GPS fix.
-        var accuracy = coords.accuracy;
-        var gpsAccuracyElement = $("#gps-accuracy");
-        gpsAccuracyElement.text(accuracy.toFixed(1));
-        if(accuracy > 30) {
-            gpsAccuracyElement.css("color", "red");
-        } else if(accuracy > 9.9) {
-            gpsAccuracyElement.css("color", "orange");
-        } else {
-            gpsAccuracyElement.css("color", "green");
-        }
-
-        // We store the current latitude and longitude...
-        this.currentLatitude = coords.latitude;
-        this.currentLongitude = coords.longitude;
-
-        // We show the speed, translating to either mph or kph...
-        var speed = 0.0;
-        var speedFactor = 0.0;
-        var speedUnitsElement = $("#gps-speed-units");
-        if(this.settings.speedUnits === "mph") {
-            speedFactor = 2.23694;
-            speedUnitsElement.text("mph");
-        } else if(this.settings.speedUnits === "kph") {
-            speedFactor = 3.6;
-            speedUnitsElement.text("kph");
-        }
-
-        if(coords.speed) {
-            speed = coords.speed * speedFactor;
-        }
-        $("#gps-speed").text(speed.toFixed(0));
-    } catch(err) {
-        Logger.error(err.message);
-    }
-};
-
-/**
- * onGPSError
- * ----------
- * Called if we get an error from the GPS.
- */
-GuardianAngel.prototype.onGPSError = function(error) {
-    try {
-        Logger.error("GPS error: " + error.message);
-    } catch(err) {
-        Logger.error(err.message);
     }
 };
 
