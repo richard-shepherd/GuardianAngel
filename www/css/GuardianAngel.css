@@ -195,7 +195,7 @@ body {
 
 .map-overlay{
     display:block;
-    text-align:center;
+    text-align:left;
     color:#fff;
     font-size:2vw;
     line-height:3vw;

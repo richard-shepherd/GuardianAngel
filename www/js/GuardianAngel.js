@@ -572,7 +572,7 @@ GuardianAngel.prototype.showMap = function(mapType) {
             var endLongitude = points[i].longitude;
             var midLatitude = (startLatitude + endLatitude) / 2.0;
             var midLongitude = (startLongitude + endLongitude) / 2.0;
-            var speed = points[i].speed;
+            var speed = points[i].speed; // TODO: Convert to mph / kph
             var leanAngle = points[i].leanAngle;
 
             // We find the color as a percentage of the max speed or lean-angle
