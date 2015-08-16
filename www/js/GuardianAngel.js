@@ -13,24 +13,22 @@
 // TODO: Optimization - don't record points unless there is a significant change(?)
 
 /**
- * MaxLeanInfo
- * -----------
- * A small class holding information about a maximum lean angle and where it occurred.
+ * MinMaxRideData
+ * --------------
+ * Holds data about the maximum speed and lean angles and the maximum and
+ * minimum latitude and longitude seen during a ride.
+ *
  * @constructor
  */
-function MaxLeanInfo(elementName) {
-    this.elementName = elementName;
-    this.leanAngle = 0.0;
-    this.latitude = 0.0;
-    this.longitude = 0.0;
-    this.element  = $(elementName);
-    this.map = null;
+function MinMaxRideData() {
+    this.maxSpeed = 0.0;
+    this.minLatitude = 999.0;
+    this.maxLatitude = -999.0;
+    this.minLongitude = 999.0;
+    this.maxLongitude = -999.0;
+    this.maxLeftLean = 0.0;
+    this.maxRightLean = 0.0;
 }
-MaxLeanInfo.prototype.clear = function() {
-    this.leanAngle = 0.0;
-    this.latitude = 0.0;
-    this.longitude = 0.0;
-};
 
 
 /**
@@ -42,7 +40,7 @@ MaxLeanInfo.prototype.clear = function() {
  */
 function GuardianAngel() {
     try{
-        this.log("Guardian Angel starting.");
+        Logger.log("Guardian Angel starting.");
 
         var that = this;
 
@@ -73,9 +71,11 @@ function GuardianAngel() {
         this.previousLeanAngleDisplayed = 999.9;
         this.leanAngleDialSignificantChange = 2.0;
 
-        // The maximum lean angles recorded in a session...
-        this.maxLeftLeanInfo = new MaxLeanInfo(".max-left-lean");
-        this.maxRightLeanInfo = new MaxLeanInfo(".max-right-lean");
+        // The min and max ride data recorded in a session, and the
+        // collection of information about each point...
+        this.minMaxRideData = new MinMaxRideData();
+        this.rideDatas = [];
+        this.rideDatasIndex = 0;
 
         // The Media object that plays the alert sound when a crash is detected...
         this.alertSound = null;
@@ -97,11 +97,6 @@ function GuardianAngel() {
         this.textCountdownTimer = null;
         this.numberTextsRemaining = 0;
 
-        // We create maps to show max lean angles, and timers to avoid updating them
-        // too fast...
-        this.mapUpdateTimers = {};
-        this.createMaps();
-
         // We create the "swiper" which shows the slides...
         this.swiper = null;
         this.createSwiper();
@@ -113,7 +108,7 @@ function GuardianAngel() {
 
         // We start the ride-data calculator.
         // This subscribes to lean-angle, position and speed...
-        this.log("Creating the ride-data calculator.");
+        Logger.log("Creating the ride-data calculator.");
         this.rideDataCalculator = new RideDataCalculator({
             callback: function(leanAngle) { that.onRideDataUpdated(leanAngle); },
             alertCallback: function() { that.onCrashDetected(); },
@@ -121,7 +116,7 @@ function GuardianAngel() {
         });
 
         // We start the GPS...
-        this.log("Starting GPS.");
+        Logger.log("Starting GPS.");
         this.currentLatitude = 0.0;
         this.currentLongitude = 0.0;
         this.gps = navigator.geolocation.watchPosition(
@@ -130,11 +125,11 @@ function GuardianAngel() {
             { timeout: 30000, enableHighAccuracy: true });
 
         // We register the Start button click...
-        this.log("Registering Start button click event.");
+        Logger.log("Registering Start button click event.");
         $("#start-button").click(function() { that.onStartButtonClicked(); });
 
         // We register the crash-detected button click (ie, button to cancel crash detection)...
-        this.log("Registering crash-detection button click event.");
+        Logger.log("Registering crash-detection button click event.");
         $("#crash-detected-button").click(function() { that.clearCrashDetection(); });
 
         // We set the crash-detection page to its default, ie no crash detected...
@@ -143,7 +138,7 @@ function GuardianAngel() {
         // We show the screen...
         $("#settings-slide").css("visibility", "visible");
     } catch(err) {
-        this.error(err.message);
+        Logger.error(err.message);
         alert(err.message);
     }
 }
@@ -163,7 +158,7 @@ GuardianAngel.Slide = {
  * Creates the object which manages the sliding "windows" for the app.
  */
 GuardianAngel.prototype.createSwiper = function() {
-    this.log("Creating swiper layout.");
+    Logger.log("Creating swiper layout.");
     this.swiper = new Swiper('.swiper-container', {
         initialSlide: GuardianAngel.Slide.LEAN_ANGLE,
         pagination: '.swiper-pagination',
@@ -177,7 +172,7 @@ GuardianAngel.prototype.createSwiper = function() {
  * Shows the lean-angle dial.
  */
 GuardianAngel.prototype.createLeanAngleDial = function() {
-    this.log("Creating the lean-angle dial.");
+    Logger.log("Creating the lean-angle dial.");
 
     var dialElement = $("#lean-angle-dial");
     var leanAngle_Width = dialElement.width();
@@ -208,61 +203,93 @@ GuardianAngel.prototype.createLeanAngleDial = function() {
  */
 GuardianAngel.prototype.onRideDataUpdated = function(rideData) {
     try {
-        // We only show the new angle on the dial if there has been a significant change...
-        var leanAngle = rideData.leanAngle;
-        if(Math.abs(leanAngle - this.previousLeanAngleDisplayed) > this.leanAngleDialSignificantChange) {
-            this.leanAngleDial.setValue(leanAngle);
-            this.previousLeanAngleDisplayed = leanAngle;
-        }
+        // We update the stats...
+        this.updateLeanAngles(rideData);
+        this.updateSpeed(rideData);
 
-        // We check if the new angle is greater than the maximum angles held
-        // for the current ride..
-        var absLean = Math.abs(leanAngle);
-        if(leanAngle < 0.0) {
-            if(absLean > this.maxLeftLeanInfo.leanAngle) {
-                this.updateMaxLeanAngle(absLean, this.maxLeftLeanInfo);
-            }
-        } else {
-            if(absLean > this.maxRightLeanInfo.leanAngle) {
-                this.updateMaxLeanAngle(absLean, this.maxRightLeanInfo);
-            }
-        }
+
+
+
     } catch(err) {
-        this.error(err.message);
+        Logger.error(err.message);
     }
 };
 
 /**
- * updateMaxLeanAngle
- * ------------------
- * Shows the max lean angle, and updates the map showing it.
+ * updateSpeed
+ * -----------
+ * Updates the speed stats and dial.
  */
-GuardianAngel.prototype.updateMaxLeanAngle = function(leanAngle, leanInfo) {
-    // We update the information we hold...
-    leanInfo.leanAngle = leanAngle;
-    leanInfo.latitude = this.currentLatitude;
-    leanInfo.longitude = this.currentLongitude;
+GuardianAngel.prototype.updateSpeed = function(rideData) {
+    // We update the screen...
+    $("#gps-speed").text(rideData.speed.toFixed(0));
 
-    // We set a timer to update the screen, so that we don't update to
-    // often as lean angles are changing...
-    if(this.mapUpdateTimers[leanInfo.elementName] !== null) {
-        // A timer is already running for this direction...
-        return;
+    // We update the max speed...
+    if(rideData.speed > this.minMaxRideData.maxSpeed) {
+        this.minMaxRideData.maxSpeed = rideData.speed;
+    }
+};
+
+/**
+ * updateLeanAngles
+ * ----------------
+ * Updates the lean angle dial and the min and max lean angles, if they
+ * have changed.
+ */
+GuardianAngel.prototype.updateLeanAngles = function(rideData) {
+    var leanAngle = rideData.leanAngle;
+    if(Math.abs(leanAngle - this.previousLeanAngleDisplayed) > this.leanAngleDialSignificantChange) {
+        this.leanAngleDial.setValue(leanAngle);
+        this.previousLeanAngleDisplayed = leanAngle;
     }
 
-    var that = this;
-    this.mapUpdateTimers[leanInfo.elementName] = setTimeout(function() {
-        // We show the max lean angle on the Ride page...
-        leanInfo.element.text(leanInfo.leanAngle.toFixed(1));
-
-        // We update the map...
-        leanInfo.map.removeMarkers();
-        leanInfo.map.setCenter(leanInfo.latitude, leanInfo.longitude);
-        leanInfo.map.addMarker({lat: leanInfo.latitude, lng: leanInfo.longitude});
-
-        that.mapUpdateTimers[leanInfo.elementName] = null;
-    }, 1000);
+    // We check if the new angle is greater than the maximum angles held
+    // for the current ride..
+    var absLean = Math.abs(leanAngle);
+    if(leanAngle < 0.0) {
+        if(absLean > this.minMaxRideData.maxLeftLean) {
+            this.minMaxRideData.maxLeftLean = absLean;
+            $(".max-left-lean").text(absLean.toFixed(1));
+        }
+    } else {
+        if(absLean > this.minMaxRideData.maxRightLean) {
+            this.minMaxRideData.maxRightLean = absLean;
+            $(".max-right-lean").text(absLean.toFixed(1));
+        }
+    }
 };
+
+///**
+// * updateMaxLeanAngle
+// * ------------------
+// * Shows the max lean angle, and updates the map showing it.
+// */
+//GuardianAngel.prototype.updateMaxLeanAngle = function(leanAngle, leanInfo) {
+//    // We update the information we hold...
+//    leanInfo.leanAngle = leanAngle;
+//    leanInfo.latitude = this.currentLatitude;
+//    leanInfo.longitude = this.currentLongitude;
+//
+//    // We set a timer to update the screen, so that we don't update to
+//    // often as lean angles are changing...
+//    if(this.mapUpdateTimers[leanInfo.elementName] !== null) {
+//        // A timer is already running for this direction...
+//        return;
+//    }
+//
+//    var that = this;
+//    this.mapUpdateTimers[leanInfo.elementName] = setTimeout(function() {
+//        // We show the max lean angle on the Ride page...
+//        leanInfo.element.text(leanInfo.leanAngle.toFixed(1));
+//
+//        // We update the map...
+//        leanInfo.map.removeMarkers();
+//        leanInfo.map.setCenter(leanInfo.latitude, leanInfo.longitude);
+//        leanInfo.map.addMarker({lat: leanInfo.latitude, lng: leanInfo.longitude});
+//
+//        that.mapUpdateTimers[leanInfo.elementName] = null;
+//    }, 1000);
+//};
 
 /**
  * onCrashDetected
@@ -278,7 +305,7 @@ GuardianAngel.prototype.onCrashDetected = function() {
         }
 
         this.crashDetected = true;
-        this.log("Crash detected.")
+        Logger.log("Crash detected.")
 
         // We show the crash detection page...
         this.swiper.slideTo(GuardianAngel.Slide.CRASH_DETECTION);
@@ -299,7 +326,7 @@ GuardianAngel.prototype.onCrashDetected = function() {
                 that.onTextCountdownTimer();
             }, 1000);
     } catch(err) {
-        this.error(err.message);
+        Logger.error(err.message);
     }
 };
 
@@ -328,7 +355,7 @@ GuardianAngel.prototype.onTextCountdownTimer = function() {
         // The countdown has reached zero, so we send texts...
         this.sendTexts();
     } catch(err) {
-        this.error(err.message);
+        Logger.error(err.message);
     }
 };
 
@@ -349,7 +376,7 @@ GuardianAngel.prototype.sendTexts = function()  {
     var phoneNumbers = this.settings.phoneNumbers.split(",");
     for(var i=0; i<phoneNumbers.length; ++i) {
         var phoneNumber = phoneNumbers[i];
-        this.log("Sending text to: " + phoneNumber + ". Message: " + message);
+        Logger.log("Sending text to: " + phoneNumber + ". Message: " + message);
 
         // We do not send a text if we are running the the desktop (test) browser...
         if(this.isWindows) {
@@ -385,7 +412,7 @@ GuardianAngel.prototype.sendTexts = function()  {
  * Logs an error.
  */
 GuardianAngel.prototype.error = function(text) {
-    this.log("ERROR: " + text);
+    Logger.log("ERROR: " + text);
 };
 
 /**
@@ -417,7 +444,7 @@ GuardianAngel.prototype.onStartButtonClicked = function() {
             this.startRide();
         }
     } catch(err) {
-        this.error(err.message);
+        Logger.error(err.message);
     }
 };
 
@@ -432,11 +459,14 @@ GuardianAngel.prototype.startRide = function() {
     startButtonElement.html('<i class="icon-stop"></i> Press to stop ride');
     startButtonElement.css("background-color", "green");
 
-    // We reset the max and min leans...
-    this.maxLeftLeanInfo.clear();
-    this.maxRightLeanInfo.clear();
-    this.maxLeftLeanInfo.element.text("0.0");
-    this.maxRightLeanInfo.element.text("0.0");
+    // We reset the max and min ride-info...
+    this.minMaxRideData = new MinMaxRideData();
+    $(".max-left-lean").text("0.0");
+    $(".max-right-lean").text("0.0");
+
+    // We clear the collection of data for the ride...
+    this.rideDatas = [];
+    this.rideDatasIndex = 0;
 
     // We clear the crash detection page...
     this.clearCrashDetection();
@@ -490,7 +520,7 @@ GuardianAngel.prototype.clearCrashDetection = function() {
  * Loads settings, and sets them to defaults if they have not previously been stored.
  */
 GuardianAngel.prototype.loadSettings = function() {
-    this.log("Loading settings.");
+    Logger.log("Loading settings.");
 
     // We load the fields in the settings...
     for(var field in this.settings) {
@@ -502,7 +532,7 @@ GuardianAngel.prototype.loadSettings = function() {
         if(storedValue === null) {
             // The data is not stored, so we store the default...
             localStorage.setItem(field, String(defaultValue));
-            this.log("Storing default value for settings field: " + field + "=" + defaultValue);
+            Logger.log("Storing default value for settings field: " + field + "=" + defaultValue);
         } else {
             // The data is stored, so we use it - first converting it...
             if(defaultValueType === "string") {
@@ -510,10 +540,10 @@ GuardianAngel.prototype.loadSettings = function() {
             } else if(defaultValueType === "number"){
                 this.settings[field] = Number(storedValue);
             } else {
-                this.error("Could not convert type for settings field: " + field);
+                Logger.error("Could not convert type for settings field: " + field);
                 continue;
             }
-            this.log("Loaded settings field: " + field + "=" + this.settings[field]);
+            Logger.log("Loaded settings field: " + field + "=" + this.settings[field]);
         }
     }
 };
@@ -572,7 +602,7 @@ GuardianAngel.prototype.onGPSSuccess = function(position) {
         }
         $("#gps-speed").text(speed.toFixed(0));
     } catch(err) {
-        this.error(err.message);
+        Logger.error(err.message);
     }
 };
 
@@ -583,9 +613,9 @@ GuardianAngel.prototype.onGPSSuccess = function(position) {
  */
 GuardianAngel.prototype.onGPSError = function(error) {
     try {
-        this.error("GPS error: " + error.message);
+        Logger.error("GPS error: " + error.message);
     } catch(err) {
-        this.error(err.message);
+        Logger.error(err.message);
     }
 };
 
@@ -597,12 +627,12 @@ GuardianAngel.prototype.onGPSError = function(error) {
  */
 GuardianAngel.prototype.findPlatform = function() {
     var platform = navigator.userAgent;
-    this.log("Platform: " + platform);
+    Logger.log("Platform: " + platform);
 
     this.isAndroid = platform.toUpperCase().indexOf("ANDROID") > -1;
     this.isWindows = platform.toUpperCase().indexOf("WINDOWS NT") > -1;
-    this.log("isAndroid: " + this.isAndroid);
-    this.log("isWindows: " + this.isWindows);
+    Logger.log("isAndroid: " + this.isAndroid);
+    Logger.log("isWindows: " + this.isWindows);
 };
 
 /**
@@ -611,7 +641,7 @@ GuardianAngel.prototype.findPlatform = function() {
  * Plays the alert sound on a loop.
  */
 GuardianAngel.prototype.playAlertSound = function() {
-    this.log("Playing alert sound.");
+    Logger.log("Playing alert sound.");
 
     // If we are testing on the browser in Windows, we do not play sounds, as
     // the PhoneGap Media object is not available)...
@@ -659,38 +689,38 @@ GuardianAngel.prototype.stopAlertSound = function() {
     }
 };
 
-/**
- * createMaps
- * ----------
- * Creates maps to show where max lean angles occur.
- */
-GuardianAngel.prototype.createMaps = function() {
-    this.log("Creating maps.");
-
-    this.maxLeftLeanInfo.map = new GMaps({
-        div: "#map-left",
-        lat: 0.0,
-        lng: 0.0,
-        scaleControl: false,
-        zoomControl: false,
-        streetViewControl: false,
-        panControl: false
-    });
-
-    this.maxRightLeanInfo.map = new GMaps({
-        div: "#map-right",
-        lat: 0.0,
-        lng: 0.0,
-        scaleControl: false,
-        zoomControl: false,
-        streetViewControl: false,
-        panControl: false
-    });
-
-    // Timers for updating maps...
-    this.mapUpdateTimers[".max-left-lean"] = null;
-    this.mapUpdateTimers[".max-right-lean"] = null;
-};
+///**
+// * createMaps
+// * ----------
+// * Creates maps to show where max lean angles occur.
+// */
+//GuardianAngel.prototype.createMaps = function() {
+//    Logger.log("Creating maps.");
+//
+//    this.maxLeftLeanInfo.map = new GMaps({
+//        div: "#map-left",
+//        lat: 0.0,
+//        lng: 0.0,
+//        scaleControl: false,
+//        zoomControl: false,
+//        streetViewControl: false,
+//        panControl: false
+//    });
+//
+//    this.maxRightLeanInfo.map = new GMaps({
+//        div: "#map-right",
+//        lat: 0.0,
+//        lng: 0.0,
+//        scaleControl: false,
+//        zoomControl: false,
+//        streetViewControl: false,
+//        panControl: false
+//    });
+//
+//    // Timers for updating maps...
+//    this.mapUpdateTimers[".max-left-lean"] = null;
+//    this.mapUpdateTimers[".max-right-lean"] = null;
+//};
 
 /**
  * onSettingsUpdated
@@ -749,5 +779,5 @@ GuardianAngel.prototype.getSetting = function(name, type) {
         return Number($("input:text[name=" + name + "]").val());
     }
 
-    this.error("Failed to read setting: " + name + ". Requested type: " + type);
+    Logger.error("Failed to read setting: " + name + ". Requested type: " + type);
 };
