@@ -11,6 +11,7 @@
 // TODO: Zoom to max lean (left and right)
 // TODO: Optimization - don't record points unless there is a significant change(?)
 // TODO: Add logging to RideDataCalculator.
+// TODO: map-overlay css should all use vw, vh
 
 /**
  * MinMaxRideData
@@ -52,7 +53,8 @@ function GuardianAngel() {
             numberTexts: 3,
             sendTextsEveryNSeconds: 60,
             speedUnits: "mph",
-            crashMessage: "My bike has fallen over!"
+            crashMessage: "My bike has fallen over!",
+            minSpeedForLeanAngle: 4.0 // meters per second
         };
         this.loadSettings();
         this.showSettings();
@@ -147,6 +149,12 @@ GuardianAngel.Slide = {
     LOGS: 4
 };
 
+// An enum for map types...
+GuardianAngel.MapType = {
+    LEAN: 0,
+    SPEED: 1
+};
+
 /**
  * createSwiper
  * ------------
@@ -203,7 +211,9 @@ GuardianAngel.prototype.onRideDataUpdated = function(rideData) {
         this.updateSpeed(rideData);
         this.updateGPSInfo(rideData);
 
-
+        // We store the point...
+        this.rideDatas[this.rideDatasIndex] = rideData;
+        this.rideDatasIndex++;
 
     } catch(err) {
         Logger.error(err.message);
@@ -217,8 +227,15 @@ GuardianAngel.prototype.onRideDataUpdated = function(rideData) {
  */
 GuardianAngel.prototype.updateGPSInfo = function(rideData) {
     // We store the latest position for sending with crash-detection texts...
-    this.currentLatitude = rideData.latitude;
-    this.currentLongitude = rideData.longitude;
+    var latitude = rideData.latitude;
+    var longitude = rideData.longitude;
+    this.currentLatitude = latitude;
+    this.currentLongitude = longitude;
+
+    if(latitude > this.minMaxRideData.maxLatitude) this.minMaxRideData.maxLatitude = latitude;
+    if(latitude < this.minMaxRideData.minLatitude) this.minMaxRideData.minLatitude = latitude;
+    if(longitude > this.minMaxRideData.maxLongitude) this.minMaxRideData.maxLongitude = longitude;
+    if(longitude < this.minMaxRideData.minLongitude) this.minMaxRideData.minLongitude = longitude;
 
     // We show the GPS accuracy in meters, and color code it.
     // Accuracy better that 10m usually means that you have a good GPS fix.
@@ -243,7 +260,7 @@ GuardianAngel.prototype.updateSpeed = function(rideData) {
     // We show the speed, translating to either mph or kph...
     var speed = 0.0;
     var speedFactor = 0.0;
-    var speedUnitsElement = $("#gps-speed-units");
+    var speedUnitsElement = $(".gps-speed-units");
     if(this.settings.speedUnits === "mph") {
         speedFactor = 2.23694;
         speedUnitsElement.text("mph");
@@ -260,6 +277,7 @@ GuardianAngel.prototype.updateSpeed = function(rideData) {
     // We update the max speed...
     if(rideData.speed > this.minMaxRideData.maxSpeed) {
         this.minMaxRideData.maxSpeed = rideData.speed;
+        $(".max-speed").text(rideData.speed.toFixed(0));
     }
 };
 
@@ -277,7 +295,15 @@ GuardianAngel.prototype.updateLeanAngles = function(rideData) {
     }
 
     // We check if the new angle is greater than the maximum angles held
-    // for the current ride..
+    // for the current ride.
+    //
+    // Note: We only check for max lean angles if the speed is greater than a minimum amount.
+    //       This means that we do not count leans (for example) when turning at junctions,
+    //       or when doing low-speed maneuvers.
+    if(rideData.speed < this.settings.minSpeedForLeanAngle) {
+        return;
+    }
+
     var absLean = Math.abs(leanAngle);
     if(leanAngle < 0.0) {
         if(absLean > this.minMaxRideData.maxLeftLean) {
@@ -494,8 +520,200 @@ GuardianAngel.prototype.stopRide = function() {
     startButtonElement.html('<i class="icon-play"></i> Press to start ride');
     startButtonElement.css("background-color", "red");
 
-    // We move to the ride-info slide...
+    // We show the ride map and move to the ride-info slide which shows it...
+    this.showMap(GuardianAngel.MapType.SPEED);
     this.swiper.slideTo(GuardianAngel.Slide.RIDE_INFO);
+};
+
+/**
+ * showMap
+ * -------
+ * Displays a map showing the ride route, with lean and speed info.
+ */
+GuardianAngel.prototype.showMap = function(mapType) {
+    // We find the center of the map and create the map...
+    var centerLatitude = (this.minMaxRideData.minLatitude + this.minMaxRideData.maxLatitude) / 2.0;
+    var centerLongitude = (this.minMaxRideData.minLongitude + this.minMaxRideData.maxLongitude) / 2.0;
+    var map = new GMaps({
+        div: "#map",
+        lat: centerLatitude,
+        lng: centerLongitude,
+        scaleControl: false,
+        zoomControl: false,
+        streetViewControl: false,
+        panControl: false,
+        click: function(e) {
+            map.removeOverlays();
+        }    });
+
+    // We draw lines from each point to the next, color coding it by lean-angle or speed...
+    var points = this.rideDatas;
+    points = this.createTestPoints(); // TODO: Remove this!
+    var maxLeftLean = this.minMaxRideData.maxLeftLean;
+    var maxRightLean = this.minMaxRideData.maxRightLean;
+    var maxSpeed = this.minMaxRideData.maxSpeed;
+
+    var numPoints = points.length;
+    if(numPoints === 0) {
+        // There are no points recorded, so there is nothing to show...
+        return;
+    }
+
+    var startLatitude = points[0].latitude;
+    var startLongitude = points[0].longitude;
+    var that = this;
+    for(var i=1; i<numPoints; ++i) {
+
+        // We create a function to add the line, as we need some data
+        // (in particular the message) to be local to this point, otherwise
+        // the closure doesn't work...
+        function addLine() {
+            var endLatitude = points[i].latitude;
+            var endLongitude = points[i].longitude;
+            var midLatitude = (startLatitude + endLatitude) / 2.0;
+            var midLongitude = (startLongitude + endLongitude) / 2.0;
+            var speed = points[i].speed;
+            var leanAngle = points[i].leanAngle;
+
+            // We find the color as a percentage of the max speed or lean-angle
+            // depending on the map type.
+            //
+            // For speed: 0=blue, max=red
+            // For lean: 0=blue, max-left=green, max-right=red
+            var color = "#0000ff";
+            if(mapType === GuardianAngel.MapType.LEAN) {
+                color = that.getLeanColor(leanAngle, maxLeftLean, maxRightLean);
+            } else if(mapType === GuardianAngel.MapType.SPEED) {
+                color = that.getSpeedColor(speed, maxSpeed);
+            }
+
+            // We create a message to show when this line is clicked...
+            var message = "Speed: " + speed.toFixed(0) + "<br/>Lean: " + leanAngle.toFixed(1);
+
+            // We draw the line...
+            map.drawPolyline({
+                path: [[startLatitude, startLongitude], [endLatitude, endLongitude]],
+                strokeColor: color,
+                strokeOpacity: 0.6,
+                strokeWeight: 5,
+                click: function(e) {
+                    map.removeOverlays();
+                    map.drawOverlay({
+                        lat: midLatitude,
+                        lng: midLongitude,
+                        content: '<div class="map-overlay">' + message + '</div>',
+                        verticalAlign: 'top',
+                        horizontalAlign: 'center'
+                    });
+                }
+            });
+
+            // The start of the next line is the end of this one...
+            startLatitude = endLatitude;
+            startLongitude = endLongitude;
+        }
+        addLine();
+    }
+
+    // We scale and zoom to the route...
+    var bounds = [];
+    bounds.push(new google.maps.LatLng(this.minMaxRideData.minLatitude, this.minMaxRideData.minLongitude));
+    bounds.push(new google.maps.LatLng(this.minMaxRideData.maxLatitude, this.minMaxRideData.maxLongitude));
+    map.fitLatLngBounds(bounds);
+};
+
+// TODO: Write this!
+GuardianAngel.prototype.getLeanColor = function(leanAngle, maxLeftLean, maxRightLean) {
+    return "#0000ff";
+};
+
+// TODO: Write this!
+GuardianAngel.prototype.getSpeedColor = function(speed, maxSpeed) {
+    if(maxSpeed === 0.0) {
+        return "#0000ff";
+    }
+
+    var fractionOfMax = speed / maxSpeed;
+    //var blue, red;
+    //if(fractionOfMax < 0.5) {
+    //    blue = 255;
+    //    red = 255 * (fractionOfMax * 2.0);
+    //} else {
+    //    red = 255;
+    //    blue = 255 - 255 * fractionOfMax;
+    //}
+
+    var blue = 255 - 255 * fractionOfMax;
+    var red = 255 * fractionOfMax;
+
+    var color = this.rgbToString(red, 0, blue);
+    Logger.log("r=" + red + ", b=" + blue + ", color=" + color);
+    return color;
+};
+
+// TODO: Remove this!
+GuardianAngel.prototype.createTestPoints = function() {
+    this.minMaxRideData = new MinMaxRideData();
+    var points = [];
+    var that = this;
+
+    // Adds a point and updates the min and max values...
+    function addPoint(point) {
+        points.push(point);
+        if(point.latitude > that.minMaxRideData.maxLatitude) that.minMaxRideData.maxLatitude = point.latitude;
+        if(point.latitude < that.minMaxRideData.minLatitude) that.minMaxRideData.minLatitude = point.latitude;
+        if(point.longitude > that.minMaxRideData.maxLongitude) that.minMaxRideData.maxLongitude = point.longitude;
+        if(point.longitude < that.minMaxRideData.minLongitude) that.minMaxRideData.minLongitude = point.longitude;
+        if(point.speed > that.minMaxRideData.maxSpeed) that.minMaxRideData.maxSpeed = point.speed;
+        var absLean = Math.abs(point.leanAngle);
+        if(point.leanAngle < 0.0) {
+            if(absLean > that.minMaxRideData.maxLeftLean) {
+                that.minMaxRideData.maxLeftLean = absLean;
+            }
+        } else {
+            if(absLean > that.minMaxRideData.maxRightLean) {
+                that.minMaxRideData.maxRightLean = absLean;
+            }
+        }
+    }
+
+    addPoint({
+        latitude: 54.203124,
+        longitude: -4.629437,
+        leanAngle: 0,
+        speed: 0
+    });
+    addPoint({
+        latitude: 54.205399,
+        longitude: -4.629420,
+        leanAngle: 10.8,
+        speed: 10
+    });
+    addPoint({
+        latitude: 54.207422,
+        longitude: -4.630825,
+        leanAngle: 6.3,
+        speed: 30
+    });
+    addPoint({
+        latitude: 54.210314,
+        longitude: -4.630358,
+        leanAngle: -12.1,
+        speed: 40
+    });
+    addPoint({
+        latitude: 54.211475,
+        longitude: -4.630102,
+        leanAngle: -17.5,
+        speed: 25
+    });
+
+    return points;
+};
+
+// TODO: Write this, and optimization to exclude points.
+GuardianAngel.prototype.getLongitudeMetersPerDegree = function(latitude) {
+
 };
 
 /**
@@ -722,3 +940,20 @@ GuardianAngel.prototype.getSetting = function(name, type) {
 
     Logger.error("Failed to read setting: " + name + ". Requested type: " + type);
 };
+
+/**
+ * rgbToString
+ * -----------
+ * Converts RGB values to a color string.
+ */
+GuardianAngel.prototype.rgbToString = function(r, g, b) {
+    function componentToHex(c) {
+        var hex = c.toString(16);
+        return hex.length == 1 ? "0" + hex : hex;
+    }
+    r = Math.round(r);
+    g = Math.round(g);
+    b = Math.round(b);
+    return "#" + componentToHex(r) + componentToHex(g) + componentToHex(b);
+};
+

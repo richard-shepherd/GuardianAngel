@@ -105,7 +105,7 @@ body {
     min-width: 14vw;
 }
 
-.min-max-angle {
+.min-max-info {
     font-family: SevenSegment;
     font-size: 2vw;
 }
@@ -136,7 +136,7 @@ body {
     font-size: 27vw;
 }
 
-#gps-speed-units {
+.gps-speed-units {
     font-size: 5vw;
 }
 
@@ -183,23 +183,27 @@ body {
     font-size: 30vw;
 }
 
-#map-left-wrapper {
-    float: left;
-    width: 45vw;
+#map-wrapper {
+    width: 96vw;
     height: 80vh;
 }
 
-#map-right-wrapper {
-    float: right;
-    width: 45vw;
-    height: 80vh;
+#map {
+    width: 96vw;
+    height:80vh;
 }
 
-.map-label {
-    font-size: 3vw;
-}
-
-.map {
-    width: 45vw;
-    height:75vh;
+.map-overlay{
+    display:block;
+    text-align:center;
+    color:#fff;
+    font-size:2vw;
+    line-height:3vw;
+    opacity:0.8;
+    background:#4477aa;
+    border:solid 3px #336699;
+    border-radius:4px;
+    box-shadow:2px 2px 10px #333;
+    text-shadow:1px 1px 1px #666;
+    padding:0 4px;
 }
