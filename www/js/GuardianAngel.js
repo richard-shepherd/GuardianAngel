@@ -349,7 +349,7 @@ GuardianAngel.prototype.onCrashDetected = function() {
         }
 
         this.crashDetected = true;
-        Logger.log("Crash detected.")
+        Logger.log("Crash detected.");
 
         // We show the crash detection page...
         this.swiper.slideTo(GuardianAngel.Slide.CRASH_DETECTION);
@@ -653,20 +653,21 @@ GuardianAngel.prototype.getLeanColor = function(leanAngle, maxLeftLean, maxRight
     if(leanAngle === 0.0) return "#0000ff";
 
     // Is it a left or right lean?
+    var fractionOfMax, red, green, blue;
     var absLeanAngle = Math.abs(leanAngle);
     if(leanAngle < 0.0) {
         // It's a left lean...
         if(maxLeftLean === 0.0) return "#0000ff";
-        var fractionOfMax = absLeanAngle / maxLeftLean;
-        var blue = 255 - 255 * fractionOfMax;
-        var green = 255 * fractionOfMax;
+        fractionOfMax = absLeanAngle / maxLeftLean;
+        blue = 255 - 255 * fractionOfMax;
+        green = 255 * fractionOfMax;
         return this.rgbToString(0, green, blue);
     } else {
         // It's a right lean...
         if(maxRightLean === 0.0) return "#0000ff";
-        var fractionOfMax = absLeanAngle / maxRightLean;
-        var blue = 255 - 255 * fractionOfMax;
-        var red = 255 * fractionOfMax;
+        fractionOfMax = absLeanAngle / maxRightLean;
+        blue = 255 - 255 * fractionOfMax;
+        red = 255 * fractionOfMax;
         return this.rgbToString(red, 0, blue);
     }
 };
