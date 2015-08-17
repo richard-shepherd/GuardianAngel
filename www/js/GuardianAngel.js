@@ -258,27 +258,44 @@ GuardianAngel.prototype.updateGPSInfo = function(rideData) {
  */
 GuardianAngel.prototype.updateSpeed = function(rideData) {
     // We show the speed, translating to either mph or kph...
-    var speed = 0.0;
-    var speedFactor = 0.0;
-    var speedUnitsElement = $(".gps-speed-units");
-    if(this.settings.speedUnits === "mph") {
-        speedFactor = 2.23694;
-        speedUnitsElement.text("mph");
-    } else if(this.settings.speedUnits === "kph") {
-        speedFactor = 3.6;
-        speedUnitsElement.text("kph");
-    }
-
-    if(rideData.speed) {
-        speed = rideData * speedFactor;
-    }
-    $("#gps-speed").text(speed.toFixed(0));
+    var speedInfo = this.convertSpeed(rideData.speed);
+    $("#gps-speed").text(speedInfo.speed.toFixed(0));
+    $(".gps-speed-units").text(speedInfo.units);
 
     // We update the max speed...
     if(rideData.speed > this.minMaxRideData.maxSpeed) {
         this.minMaxRideData.maxSpeed = rideData.speed;
         $(".max-speed").text(rideData.speed.toFixed(0));
     }
+};
+
+/**
+ * convertSpeed
+ * ------------
+ * Converts a speed from m/s to the units in the settings.
+ *
+ * Returns: { speed: [number], units: [string] }
+ */
+GuardianAngel.prototype.convertSpeed = function(metersPerSecond) {
+    var speed = 0.0;
+    var units = "";
+    var speedFactor = 0.0;
+    if(this.settings.speedUnits === "mph") {
+        speedFactor = 2.23694;
+        units = "mph";
+    } else if(this.settings.speedUnits === "kph") {
+        speedFactor = 3.6;
+        units = "kph";
+    }
+
+    if(metersPerSecond) {
+        speed = metersPerSecond * speedFactor;
+    }
+
+    return {
+        speed: speed,
+        units: units
+    };
 };
 
 /**
@@ -572,7 +589,8 @@ GuardianAngel.prototype.showMap = function(mapType) {
             var endLongitude = points[i].longitude;
             var midLatitude = (startLatitude + endLatitude) / 2.0;
             var midLongitude = (startLongitude + endLongitude) / 2.0;
-            var speed = points[i].speed; // TODO: Convert to mph / kph
+            var speed = points[i].speed;  // Note: This is in meters per second.
+            var speedInfo = that.convertSpeed(speed);
             var leanAngle = points[i].leanAngle;
 
             // We find the color as a percentage of the max speed or lean-angle
@@ -588,7 +606,10 @@ GuardianAngel.prototype.showMap = function(mapType) {
             }
 
             // We create a message to show when this line is clicked...
-            var message = "Speed: " + speed.toFixed(0) + "<br/>Lean: " + leanAngle.toFixed(1);
+            var message = '<div class="map-overlay">' +
+                '<div><span class="map-overlay-label">Speed:</span>' + speedInfo.speed.toFixed(0) + ' ' + speedInfo.units + '</div>' +
+                '<div><span class="map-overlay-label">Lean:</span>' + leanAngle.toFixed(1) + '&#176</div>' +
+                '</div>';
 
             // We draw the line...
             map.drawPolyline({
@@ -601,7 +622,8 @@ GuardianAngel.prototype.showMap = function(mapType) {
                     map.drawOverlay({
                         lat: midLatitude,
                         lng: midLongitude,
-                        content: '<div class="map-overlay">' + message + '</div>',
+                        //content: '<div class="map-overlay">' + message + '</div>',
+                        content: message,
                         verticalAlign: 'top',
                         horizontalAlign: 'center'
                     });
@@ -634,20 +656,10 @@ GuardianAngel.prototype.getSpeedColor = function(speed, maxSpeed) {
     }
 
     var fractionOfMax = speed / maxSpeed;
-    //var blue, red;
-    //if(fractionOfMax < 0.5) {
-    //    blue = 255;
-    //    red = 255 * (fractionOfMax * 2.0);
-    //} else {
-    //    red = 255;
-    //    blue = 255 - 255 * fractionOfMax;
-    //}
-
     var blue = 255 - 255 * fractionOfMax;
     var red = 255 * fractionOfMax;
-
     var color = this.rgbToString(red, 0, blue);
-    Logger.log("r=" + red + ", b=" + blue + ", color=" + color);
+
     return color;
 };
 
@@ -707,6 +719,25 @@ GuardianAngel.prototype.createTestPoints = function() {
         leanAngle: -17.5,
         speed: 25
     });
+
+    var lat = 54.211475;
+    var lng = -4.630102;
+    var speed = 20;
+    for(var i=0; i<2000; ++i) {
+        var newLat = lat + Math.random() * 0.01 - 0.002;
+        var newLng = lng + Math.random() * 0.01 - 0.005
+        var newSpeed = speed + Math.random() * 2.0 - 1.0;
+        if(newSpeed < 0.0) newSpeed = 0.0;
+        addPoint({
+            latitude: newLat,
+            longitude: newLng,
+            leanAngle: Math.random() * 40.0 - 20.0,
+            speed: newSpeed
+        });
+        lat = newLat;
+        lng = newLng;
+        speed = newSpeed;
+    }
 
     return points;
 };

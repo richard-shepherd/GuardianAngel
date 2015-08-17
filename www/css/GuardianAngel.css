@@ -18,6 +18,7 @@ body {
     margin: 1vh;
     margin-left: 1vw;
     margin-right: 4vw;
+    overflow: hidden;
 }
 
 .swiper-pagination-bullet {
@@ -148,6 +149,8 @@ body {
 #log {
     font-family: courier, monospace;
     font-size: 1.5vw;
+    overflow-y: scroll;
+    max-height: 80vh;
 }
 
 #crash-not-detected-text {
@@ -194,16 +197,21 @@ body {
 }
 
 .map-overlay{
-    display:block;
-    text-align:left;
-    color:#fff;
-    font-size:2vw;
-    line-height:3vw;
-    opacity:0.8;
-    background:#4477aa;
-    border:solid 3px #336699;
+    display: block;
+    width: 15vw;
+    color: #fff;
+    font-size: 2vw;
+    line-height: 3vw;
+    opacity: 0.8;
+    background: #4477aa;
+    border: solid 3px #336699;
     border-radius:4px;
-    box-shadow:2px 2px 10px #333;
-    text-shadow:1px 1px 1px #666;
-    padding:0 4px;
+    box-shadow: 2px 2px 10px #333;
+    text-shadow: 1px 1px 1px #666;
+    padding: 0 4px;
+}
+
+.map-overlay-label {
+    float: left;
+    min-width: 6.5vw;
 }
