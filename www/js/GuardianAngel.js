@@ -321,16 +321,16 @@ GuardianAngel.prototype.updateLeanAngles = function(rideData) {
         return;
     }
 
-    var absLean = Math.abs(leanAngle);
+    var absLeanAngle = Math.abs(leanAngle);
     if(leanAngle < 0.0) {
-        if(absLean > this.minMaxRideData.maxLeftLean) {
-            this.minMaxRideData.maxLeftLean = absLean;
-            $(".max-left-lean").text(absLean.toFixed(1));
+        if(absLeanAngle > this.minMaxRideData.maxLeftLean) {
+            this.minMaxRideData.maxLeftLean = absLeanAngle;
+            $(".max-left-lean").text(absLeanAngle.toFixed(1));
         }
     } else {
-        if(absLean > this.minMaxRideData.maxRightLean) {
-            this.minMaxRideData.maxRightLean = absLean;
-            $(".max-right-lean").text(absLean.toFixed(1));
+        if(absLeanAngle > this.minMaxRideData.maxRightLean) {
+            this.minMaxRideData.maxRightLean = absLeanAngle;
+            $(".max-right-lean").text(absLeanAngle.toFixed(1));
         }
     }
 };
@@ -538,7 +538,7 @@ GuardianAngel.prototype.stopRide = function() {
     startButtonElement.css("background-color", "red");
 
     // We show the ride map and move to the ride-info slide which shows it...
-    this.showMap(GuardianAngel.MapType.SPEED);
+    this.showMap(GuardianAngel.MapType.LEAN);
     this.swiper.slideTo(GuardianAngel.Slide.RIDE_INFO);
 };
 
@@ -622,7 +622,6 @@ GuardianAngel.prototype.showMap = function(mapType) {
                     map.drawOverlay({
                         lat: midLatitude,
                         lng: midLongitude,
-                        //content: '<div class="map-overlay">' + message + '</div>',
                         content: message,
                         verticalAlign: 'top',
                         horizontalAlign: 'center'
@@ -644,12 +643,40 @@ GuardianAngel.prototype.showMap = function(mapType) {
     map.fitLatLngBounds(bounds);
 };
 
-// TODO: Write this!
+/**
+ * getLeanColor
+ * ------------
+ * Returns a color representing the lean angle.
+ * 0 = blue, max-left = green, max-right = red
+ */
 GuardianAngel.prototype.getLeanColor = function(leanAngle, maxLeftLean, maxRightLean) {
-    return "#0000ff";
+    if(leanAngle === 0.0) return "#0000ff";
+
+    // Is it a left or right lean?
+    var absLeanAngle = Math.abs(leanAngle);
+    if(leanAngle < 0.0) {
+        // It's a left lean...
+        if(maxLeftLean === 0.0) return "#0000ff";
+        var fractionOfMax = absLeanAngle / maxLeftLean;
+        var blue = 255 - 255 * fractionOfMax;
+        var green = 255 * fractionOfMax;
+        return this.rgbToString(0, green, blue);
+    } else {
+        // It's a right lean...
+        if(maxRightLean === 0.0) return "#0000ff";
+        var fractionOfMax = absLeanAngle / maxRightLean;
+        var blue = 255 - 255 * fractionOfMax;
+        var red = 255 * fractionOfMax;
+        return this.rgbToString(red, 0, blue);
+    }
 };
 
-// TODO: Write this!
+/**
+ * getSpeedColor
+ * -------------
+ * Returns a color representing the speed.
+ * 0 = blue, max-speed = red.
+ */
 GuardianAngel.prototype.getSpeedColor = function(speed, maxSpeed) {
     if(maxSpeed === 0.0) {
         return "#0000ff";
@@ -658,9 +685,7 @@ GuardianAngel.prototype.getSpeedColor = function(speed, maxSpeed) {
     var fractionOfMax = speed / maxSpeed;
     var blue = 255 - 255 * fractionOfMax;
     var red = 255 * fractionOfMax;
-    var color = this.rgbToString(red, 0, blue);
-
-    return color;
+    return this.rgbToString(red, 0, blue);
 };
 
 // TODO: Remove this!
@@ -704,7 +729,7 @@ GuardianAngel.prototype.createTestPoints = function() {
     addPoint({
         latitude: 54.207422,
         longitude: -4.630825,
-        leanAngle: 6.3,
+        leanAngle: 1.3,
         speed: 30
     });
     addPoint({
@@ -720,24 +745,24 @@ GuardianAngel.prototype.createTestPoints = function() {
         speed: 25
     });
 
-    var lat = 54.211475;
-    var lng = -4.630102;
-    var speed = 20;
-    for(var i=0; i<2000; ++i) {
-        var newLat = lat + Math.random() * 0.01 - 0.002;
-        var newLng = lng + Math.random() * 0.01 - 0.005
-        var newSpeed = speed + Math.random() * 2.0 - 1.0;
-        if(newSpeed < 0.0) newSpeed = 0.0;
-        addPoint({
-            latitude: newLat,
-            longitude: newLng,
-            leanAngle: Math.random() * 40.0 - 20.0,
-            speed: newSpeed
-        });
-        lat = newLat;
-        lng = newLng;
-        speed = newSpeed;
-    }
+    //var lat = 54.211475;
+    //var lng = -4.630102;
+    //var speed = 20;
+    //for(var i=0; i<2000; ++i) {
+    //    var newLat = lat + Math.random() * 0.01 - 0.002;
+    //    var newLng = lng + Math.random() * 0.01 - 0.005
+    //    var newSpeed = speed + Math.random() * 2.0 - 1.0;
+    //    if(newSpeed < 0.0) newSpeed = 0.0;
+    //    addPoint({
+    //        latitude: newLat,
+    //        longitude: newLng,
+    //        leanAngle: Math.random() * 40.0 - 20.0,
+    //        speed: newSpeed
+    //    });
+    //    lat = newLat;
+    //    lng = newLng;
+    //    speed = newSpeed;
+    //}
 
     return points;
 };
