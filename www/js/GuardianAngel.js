@@ -2,16 +2,13 @@
 // TODO: RideDataCalculator efficiency
 // TODO: Add a licence to GitHub: code cannot be reused commercially
 // TODO: Saw error GMaps is not defined: Happens when there is no network access to load google maps
-// TODO: Fit bounds of ride-info map
-// TODO: Change ride info to the whole ride with color coded lean angle and speed
 // TODO: Option to switch ride-info map between lean and speed
-// TODO: Add overlays when lines are clicked on showing lean and speed
-// TODO: Don't record lean when speed less than (say) 10mph (configurable)
+// TODO: Don't record (or display) lean when speed less than (say) 10mph (configurable)
 // TODO: Zoom to max speed
 // TODO: Zoom to max lean (left and right)
-// TODO: Optimization - don't record points unless there is a significant change(?)
 // TODO: Add logging to RideDataCalculator.
 // TODO: map-overlay css should all use vw, vh
+// TODO: Calculate m/deg lat/long more accurately, from map center. (In particularly for longitude.)
 
 /**
  * MinMaxRideData
@@ -67,6 +64,14 @@ function GuardianAngel() {
 
         // True if the ride has started, ie the Start button has been pressed...
         this.rideStarted = false;
+
+        // For significant changes when drawing map points...
+        this.mapSignificantDistanceMeters = 50.0;
+        this.mapSignificantLeanDelta = 2.0;
+        this.mapSignificantSpeedDelta = 2.0;  // meters per second
+        this.mapSignificantDistanceMetersSquared = this.mapSignificantDistanceMeters * this.mapSignificantDistanceMeters;
+        this.metersPerDegreeOfLatitude = 111304.0;
+        this.metersPerDegreeOfLongitude = 65575.0;
 
         // We hold the last lean-angle shown in the dial, and a movement tolerance. This
         // avoids redrawing the dial for small movements...
@@ -565,82 +570,130 @@ GuardianAngel.prototype.showMap = function(mapType) {
 
     // We draw lines from each point to the next, color coding it by lean-angle or speed...
     var points = this.rideDatas;
-    points = this.createTestPoints(); // TODO: Remove this!
-    var maxLeftLean = this.minMaxRideData.maxLeftLean;
-    var maxRightLean = this.minMaxRideData.maxRightLean;
-    var maxSpeed = this.minMaxRideData.maxSpeed;
+    //points = this.createTestPoints(); // TODO: Remove this!
 
     var numPoints = points.length;
+    $("#map-num-points").text(numPoints);
     if(numPoints === 0) {
         // There are no points recorded, so there is nothing to show...
         return;
     }
 
-    var startLatitude = points[0].latitude;
-    var startLongitude = points[0].longitude;
-    var that = this;
+    // We draw the lines...
+    var numPointsPlotted = 0;
+    var pointIndexElement = $("#map-point-index");
+    var previousPoint = points[0];
     for(var i=1; i<numPoints; ++i) {
+        pointIndexElement.text(i);
 
-        // We create a function to add the line, as we need some data
-        // (in particular the message) to be local to this point, otherwise
-        // the closure doesn't work...
-        function addLine() {
-            var endLatitude = points[i].latitude;
-            var endLongitude = points[i].longitude;
-            var midLatitude = (startLatitude + endLatitude) / 2.0;
-            var midLongitude = (startLongitude + endLongitude) / 2.0;
-            var speed = points[i].speed;  // Note: This is in meters per second.
-            var speedInfo = that.convertSpeed(speed);
-            var leanAngle = points[i].leanAngle;
-
-            // We find the color as a percentage of the max speed or lean-angle
-            // depending on the map type.
-            //
-            // For speed: 0=blue, max=red
-            // For lean: 0=blue, max-left=green, max-right=red
-            var color = "#0000ff";
-            if(mapType === GuardianAngel.MapType.LEAN) {
-                color = that.getLeanColor(leanAngle, maxLeftLean, maxRightLean);
-            } else if(mapType === GuardianAngel.MapType.SPEED) {
-                color = that.getSpeedColor(speed, maxSpeed);
-            }
-
-            // We create a message to show when this line is clicked...
-            var message = '<div class="map-overlay">' +
-                '<div><span class="map-overlay-label">Speed:</span>' + speedInfo.speed.toFixed(0) + ' ' + speedInfo.units + '</div>' +
-                '<div><span class="map-overlay-label">Lean:</span>' + leanAngle.toFixed(1) + '&#176</div>' +
-                '</div>';
-
-            // We draw the line...
-            map.drawPolyline({
-                path: [[startLatitude, startLongitude], [endLatitude, endLongitude]],
-                strokeColor: color,
-                strokeOpacity: 0.6,
-                strokeWeight: 5,
-                click: function(e) {
-                    map.removeOverlays();
-                    map.drawOverlay({
-                        lat: midLatitude,
-                        lng: midLongitude,
-                        content: message,
-                        verticalAlign: 'top',
-                        horizontalAlign: 'center'
-                    });
-                }
-            });
-
-            // The start of the next line is the end of this one...
-            startLatitude = endLatitude;
-            startLongitude = endLongitude;
+        var newPoint = points[i];
+        if(!this.mapSignificantChange(previousPoint, newPoint) && i != numPoints-1) {
+            // There has been no significant change from the previous point
+            // (for example, the bike may be stopped), so we do not plot this
+            // point...
+            continue;
         }
-        addLine();
+
+        this.addLineToMap(map, previousPoint, newPoint, mapType);
+        numPointsPlotted++;
+        previousPoint = newPoint;
     }
+    Logger.log("Showing map. Total points in ride: " + numPoints + ", points plotted: " + numPointsPlotted);
 
     // We scale and zoom to the route...
-    var bounds = [];
-    bounds.push(new google.maps.LatLng(this.minMaxRideData.minLatitude, this.minMaxRideData.minLongitude));
-    bounds.push(new google.maps.LatLng(this.minMaxRideData.maxLatitude, this.minMaxRideData.maxLongitude));
-    map.fitLatLngBounds(bounds);
+    if(numPointsPlotted > 1) {
+        var bounds = [];
+        bounds.push(new google.maps.LatLng(this.minMaxRideData.minLatitude, this.minMaxRideData.minLongitude));
+        bounds.push(new google.maps.LatLng(this.minMaxRideData.maxLatitude, this.minMaxRideData.maxLongitude));
+        map.fitLatLngBounds(bounds);
+    }
+};
+
+/**
+ * mapSignificantChange
+ * --------------------
+ * Returns true if there has been a significant change between two points in the ride.
+ */
+GuardianAngel.prototype.mapSignificantChange = function(point1, point2) {
+    // The change is significant if:
+    // 1. The distance has changed by more than a limit, OR
+    // 2. The lean angle has changed by more than a limit, OR
+    // 3. The speed has changed by more than a limit.
+
+    // 1. Distance.
+    // We do a rough Pythagoras calculation, which should be good enough for this
+    // significant change check.
+    var diffLatitude = point2.latitude - point1.latitude;
+    var diffLatitudeMeters = diffLatitude * this.metersPerDegreeOfLatitude;
+    var diffLatitudeMetersSquared = diffLatitudeMeters * diffLatitudeMeters;
+
+    var diffLongitude = point2.longitude - point1.longitude;
+    var diffLongitudeMeters = diffLongitude * this.metersPerDegreeOfLongitude;
+    var diffLongitudeMetersSquared = diffLongitudeMeters * diffLongitudeMeters;
+
+    var distanceSquared = diffLatitudeMetersSquared + diffLongitudeMetersSquared;
+    if(distanceSquared > this.mapSignificantDistanceMetersSquared) {
+        return true;
+    }
+
+    // 2. Lean angle...
+    var diffLean = Math.abs(point2.leanAngle - point1.leanAngle);
+    if(diffLean > this.mapSignificantLeanDelta) {
+        return true;
+    }
+
+    // 3. Speed...
+    var diffSpeed = Math.abs(point2.speed - point1.speed);
+    if(diffSpeed > this.mapSignificantSpeedDelta) {
+        return true;
+    }
+
+    // None of the conditions had a significant change...
+    return false;
+};
+
+/**
+ * addLineToMap
+ * ------------
+ * Adds a line to the map, coloring it according to lean angle or speed.
+ */
+GuardianAngel.prototype.addLineToMap = function(map, startPoint, endPoint, mapType) {
+    var midLatitude = (startPoint.latitude + endPoint.latitude) / 2.0;
+    var midLongitude = (startPoint.longitude + endPoint.longitude) / 2.0;
+    var speedInfo = this.convertSpeed(endPoint.speed);
+
+    // We find the color as a percentage of the max speed or lean-angle
+    // depending on the map type.
+    var color = "#0000ff";
+    if(mapType === GuardianAngel.MapType.LEAN) {
+        color = this.getLeanColor(endPoint.leanAngle, this.minMaxRideData.maxLeftLean, this.minMaxRideData.maxRightLean);
+    } else if(mapType === GuardianAngel.MapType.SPEED) {
+        color = this.getSpeedColor(endPoint.speed, this.minMaxRideData.maxSpeed);
+    }
+
+    // We create a message to show when this line is clicked...
+    var message = '<div class="map-overlay">' +
+        '<div><span class="map-overlay-label">Speed:</span>' + speedInfo.speed.toFixed(0) + ' ' + speedInfo.units + '</div>' +
+        '<div><span class="map-overlay-label">Lean:</span>' + endPoint.leanAngle.toFixed(1) + '&#176</div>' +
+        '</div>';
+
+    // We draw the line...
+    map.drawPolyline({
+        path: [[startPoint.latitude, startPoint.longitude], [endPoint.latitude, endPoint.longitude]],
+        strokeColor: color,
+        strokeOpacity: 0.6,
+        strokeWeight: 5,
+        click: function(e) {
+            map.removeOverlays();
+            map.drawOverlay({
+                lat: midLatitude,
+                lng: midLongitude,
+                content: message,
+                verticalAlign: 'top',
+                horizontalAlign: 'center'
+            });
+        }
+    });
 };
 
 /**
@@ -741,29 +794,95 @@ GuardianAngel.prototype.createTestPoints = function() {
     });
     addPoint({
         latitude: 54.211475,
-        longitude: -4.630102,
+        longitude: -4.6301,
+        leanAngle: -17.5,
+        speed: 25
+    });
+    addPoint({
+        latitude: 54.211475,
+        longitude: -4.6304,
+        leanAngle: -17.5,
+        speed: 25
+    });
+    addPoint({
+        latitude: 54.211475,
+        longitude: -4.6307,
+        leanAngle: -17.5,
+        speed: 25
+    });
+    addPoint({
+        latitude: 54.211475,
+        longitude: -4.6310,
+        leanAngle: -17.5,
+        speed: 25
+    });
+    addPoint({
+        latitude: 54.211475,
+        longitude: -4.6313,
+        leanAngle: -17.5,
+        speed: 25
+    });
+    addPoint({
+        latitude: 54.211475,
+        longitude: -4.6316,
+        leanAngle: -17.5,
+        speed: 25
+    });
+    addPoint({
+        latitude: 54.211475,
+        longitude: -4.6319,
+        leanAngle: -17.5,
+        speed: 25
+    });
+    addPoint({
+        latitude: 54.211475,
+        longitude: -4.6322,
+        leanAngle: -17.5,
+        speed: 25
+    });
+    addPoint({
+        latitude: 54.211475,
+        longitude: -4.6325,
+        leanAngle: -17.5,
+        speed: 28
+    });
+    addPoint({
+        latitude: 54.211475,
+        longitude: -4.6328,
+        leanAngle: -17.5,
+        speed: 25
+    });
+    addPoint({
+        latitude: 54.211475,
+        longitude: -4.6331,
         leanAngle: -17.5,
         speed: 25
     });
 
-    //var lat = 54.211475;
-    //var lng = -4.630102;
-    //var speed = 20;
-    //for(var i=0; i<2000; ++i) {
-    //    var newLat = lat + Math.random() * 0.01 - 0.002;
-    //    var newLng = lng + Math.random() * 0.01 - 0.005
-    //    var newSpeed = speed + Math.random() * 2.0 - 1.0;
-    //    if(newSpeed < 0.0) newSpeed = 0.0;
-    //    addPoint({
-    //        latitude: newLat,
-    //        longitude: newLng,
-    //        leanAngle: Math.random() * 40.0 - 20.0,
-    //        speed: newSpeed
-    //    });
-    //    lat = newLat;
-    //    lng = newLng;
-    //    speed = newSpeed;
-    //}
+    var lat = 54.211475;
+    var lng = -4.6331;
+    var speed = 25;
+    var lean = -17.5;
+    for(var i=0; i<50000; ++i) {
+        var newLat = lat + Math.random() * 0.0001 - 0.00005;
+        var newLng = lng + Math.random() * 0.0001 - 0.00005;
+        var newSpeed = speed + Math.random() * 1.0 - 0.5;
+        if(newSpeed < 0.0) newSpeed = 0.0;
+        var newLean = lean + Math.random() * 1.0 - 0.5;
+        if(newLean < -30) newLean = -30;
+        if(newLean > 30) newLean = 30;
+
+        addPoint({
+            latitude: newLat,
+            longitude: newLng,
+            leanAngle: newLean,
+            speed: newSpeed
+        });
+        lat = newLat;
+        lng = newLng;
+        speed = newSpeed;
+        lean = newLean;
+    }
 
     return points;
 };
