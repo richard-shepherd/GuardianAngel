@@ -4,8 +4,8 @@
 // TODO: Saw error GMaps is not defined: Happens when there is no network access to load google maps
 // TODO: Option to switch ride-info map between lean and speed
 // TODO: Don't record (or display) lean when speed less than (say) 10mph (configurable)
-// TODO: Zoom to max speed
-// TODO: Zoom to max lean (left and right)
+// TODO: Zoom to max speed - and show overlay label
+// TODO: Zoom to max lean (left and right) - and show overlay label
 // TODO: Add logging to RideDataCalculator.
 // TODO: map-overlay css should all use vw, vh
 // TODO: Calculate m/deg lat/long more accurately, from map center. (In particularly for longitude.)
@@ -217,6 +217,10 @@ GuardianAngel.prototype.onRideDataUpdated = function(rideData) {
         this.updateGPSInfo(rideData);
 
         // We store the point...
+        if(rideData.speed < this.minSpeedForLeanAngle) {
+            // We do not record lean angles at low speed...
+            rideData.leanAngle = 0.0;
+        }
         this.rideDatas[this.rideDatasIndex] = rideData;
         this.rideDatasIndex++;
 
@@ -1023,39 +1027,6 @@ GuardianAngel.prototype.stopAlertSound = function() {
         this.alertSound = null;
     }
 };
-
-///**
-// * createMaps
-// * ----------
-// * Creates maps to show where max lean angles occur.
-// */
-//GuardianAngel.prototype.createMaps = function() {
-//    Logger.log("Creating maps.");
-//
-//    this.maxLeftLeanInfo.map = new GMaps({
-//        div: "#map-left",
-//        lat: 0.0,
-//        lng: 0.0,
-//        scaleControl: false,
-//        zoomControl: false,
-//        streetViewControl: false,
-//        panControl: false
-//    });
-//
-//    this.maxRightLeanInfo.map = new GMaps({
-//        div: "#map-right",
-//        lat: 0.0,
-//        lng: 0.0,
-//        scaleControl: false,
-//        zoomControl: false,
-//        streetViewControl: false,
-//        panControl: false
-//    });
-//
-//    // Timers for updating maps...
-//    this.mapUpdateTimers[".max-left-lean"] = null;
-//    this.mapUpdateTimers[".max-right-lean"] = null;
-//};
 
 /**
  * onSettingsUpdated
