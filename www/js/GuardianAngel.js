@@ -565,7 +565,7 @@ GuardianAngel.prototype.stopRide = function() {
     startButtonElement.css("background-color", "red");
 
     // We show the ride map and move to the ride-info slide which shows it...
-    this.showMap(GuardianAngel.MapType.LEAN);
+    this.showMap();
     this.swiper.slideTo(GuardianAngel.Slide.RIDE_INFO);
 };
 
@@ -574,7 +574,7 @@ GuardianAngel.prototype.stopRide = function() {
  * -------
  * Displays a map showing the ride route, with lean and speed info.
  */
-GuardianAngel.prototype.showMap = function(mapType) {
+GuardianAngel.prototype.showMap = function() {
     // We find the center of the map and create the map...
     var centerLatitude = (this.minMaxRideData.minLatitude + this.minMaxRideData.maxLatitude) / 2.0;
     var centerLongitude = (this.minMaxRideData.minLongitude + this.minMaxRideData.maxLongitude) / 2.0;
@@ -588,7 +588,11 @@ GuardianAngel.prototype.showMap = function(mapType) {
         panControl: false,
         click: function(e) {
             map.removeOverlays();
-        }    });
+        }
+    });
+
+    // We find the type of map to show...
+    var mapType = this.getSelectedMapType();
 
     // We draw lines from each point to the next, color coding it by lean-angle or speed...
     var points = this.rideDatas;
@@ -625,6 +629,23 @@ GuardianAngel.prototype.showMap = function(mapType) {
         bounds.push(new google.maps.LatLng(this.minMaxRideData.maxLatitude, this.minMaxRideData.maxLongitude));
         map.fitLatLngBounds(bounds);
     }
+};
+
+/**
+ * getSelectedMapType
+ * ------------------
+ * Returns the map-type (lean or speed) selected in the map-options panel.
+ */
+GuardianAngel.prototype.getSelectedMapType = function() {
+    var mapType = GuardianAngel.MapType.LEAN;
+    var mapTypeString = this.getSetting("map-options-map-type", "radio");
+    if(mapTypeString === "lean") {
+        mapType = GuardianAngel.MapType.LEAN;
+    }
+    if(mapTypeString === "speed") {
+        mapType = GuardianAngel.MapType.SPEED;
+    }
+    return mapType;
 };
 
 /**
@@ -1124,7 +1145,7 @@ GuardianAngel.prototype.rgbToString = function(r, g, b) {
  * Sets up the options panel that is shown as an overlay on the map.
  */
 GuardianAngel.prototype.setupMapOptionsPanel = function() {
-    this.showMap(GuardianAngel.MapType.LEAN);  // TODO: Remove this
+    this.showMap();  // TODO: Remove this
     this.swiper.slideTo(GuardianAngel.Slide.RIDE_INFO);  // TODO: Remove this
 
     var that = this;
@@ -1132,12 +1153,6 @@ GuardianAngel.prototype.setupMapOptionsPanel = function() {
     // Event called when the lean / speed radio buttons are clicked.
     // We show the chosen map-type...
     $(".map-lean-or-speed").click(function(e) {
-        var mapType = that.getSetting("map-options-map-type", "radio");
-        if(mapType === "lean") {
-            that.showMap(GuardianAngel.MapType.LEAN);
-        }
-        if(mapType === "speed") {
-            that.showMap(GuardianAngel.MapType.SPEED);
-        }
+        that.showMap();
     });
 };
