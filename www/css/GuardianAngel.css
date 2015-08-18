@@ -187,12 +187,12 @@ body {
 }
 
 #map-wrapper {
-    width: 96vw;
+    width: 94vw;
     height: 80vh;
 }
 
 #map {
-    width: 96vw;
+    width: 94vw;
     height:80vh;
 }
 
@@ -216,3 +216,27 @@ body {
     min-width: 6.5vw;
 }
 
+#map-options {
+    position: absolute;
+    top: 18vh;
+    left: 75vw;
+    z-index: 2;
+    display: block;
+    width: 16vw;
+    color: #fff;
+    font-size: 2vw;
+    line-height: 3vw;
+    opacity: 0.8;
+    background: #4477aa;
+    border: solid 3px #336699;
+    border-radius:4px;
+    box-shadow: 2px 2px 10px #333;
+    text-shadow: 1px 1px 1px #666;
+    padding: 0 4px;
+}
+
+#map-options input[type=radio] {
+    border: 0px;
+    width: 2vw;
+    height: 2vw;
+}

@@ -2,13 +2,15 @@
 // TODO: RideDataCalculator efficiency
 // TODO: Add a licence to GitHub: code cannot be reused commercially
 // TODO: Saw error GMaps is not defined: Happens when there is no network access to load google maps
-// TODO: Option to switch ride-info map between lean and speed
 // TODO: Don't record (or display) lean when speed less than (say) 10mph (configurable)
 // TODO: Zoom to max speed - and show overlay label
 // TODO: Zoom to max lean (left and right) - and show overlay label
 // TODO: Add logging to RideDataCalculator.
 // TODO: map-overlay css should all use vw, vh
 // TODO: Calculate m/deg lat/long more accurately, from map center. (In particularly for longitude.)
+// TODO: Lean seems to lag corners (which I suppose it would with the moving average). Turn down the averaging?
+// TODO: Is it possible to show less precision in the map when we are zoomed out further?
+// TODO: Change minimum zoom code: only set bounds if min-max > some distance, e.g. 200m
 
 /**
  * MinMaxRideData
@@ -53,14 +55,7 @@ function GuardianAngel() {
             crashMessage: "My bike has fallen over!",
             minSpeedForLeanAngle: 4.0 // meters per second
         };
-        this.loadSettings();
-        this.showSettings();
-
-        // We register events to be triggered when settings are changed, so
-        // we can update and save them...
-        var settingElements = $(".setting");
-        settingElements.keyup(function(eventData){ that.onSettingsUpdated(); });
-        settingElements.click(function(eventData){ that.onSettingsUpdated(); });
+        this.initializeSettings();
 
         // True if the ride has started, ie the Start button has been pressed...
         this.rideStarted = false;
@@ -137,6 +132,9 @@ function GuardianAngel() {
         // We set the crash-detection page to its default, ie no crash detected...
         this.clearCrashDetection();
 
+        // We setup the map-options...
+        this.setupMapOptionsPanel();
+
         // We show the screen...
         $("#settings-slide").css("visibility", "visible");
     } catch(err) {
@@ -158,6 +156,22 @@ GuardianAngel.Slide = {
 GuardianAngel.MapType = {
     LEAN: 0,
     SPEED: 1
+};
+
+/**
+ * initializeSettings
+ * ------------------
+ * Loads and shows settings.
+ */
+GuardianAngel.prototype.initializeSettings = function() {
+    this.loadSettings();
+    this.showSettings();
+
+    // We register events to be triggered when settings are changed, so
+    // we can update and save them...
+    var settingElements = $(".setting");
+    settingElements.keyup(function(eventData){ that.onSettingsUpdated(); });
+    settingElements.click(function(eventData){ that.onSettingsUpdated(); });
 };
 
 /**
@@ -221,8 +235,12 @@ GuardianAngel.prototype.onRideDataUpdated = function(rideData) {
             // We do not record lean angles at low speed...
             rideData.leanAngle = 0.0;
         }
-        this.rideDatas[this.rideDatasIndex] = rideData;
-        this.rideDatasIndex++;
+
+        // We record the point, provided we've got a valid position...
+        if(rideData.latitude !== 0.0 && rideData.longitude !== 0.0) {
+            this.rideDatas[this.rideDatasIndex] = rideData;
+            this.rideDatasIndex++;
+        }
 
     } catch(err) {
         Logger.error(err.message);
@@ -574,7 +592,7 @@ GuardianAngel.prototype.showMap = function(mapType) {
 
     // We draw lines from each point to the next, color coding it by lean-angle or speed...
     var points = this.rideDatas;
-    //points = this.createTestPoints(); // TODO: Remove this!
+    points = this.createTestPoints(); // TODO: Remove this!
 
     var numPoints = points.length;
     if(numPoints === 0) {
@@ -859,30 +877,30 @@ GuardianAngel.prototype.createTestPoints = function() {
         speed: 25
     });
 
-    var lat = 54.211475;
-    var lng = -4.6331;
-    var speed = 25;
-    var lean = -17.5;
-    for(var i=0; i<50000; ++i) {
-        var newLat = lat + Math.random() * 0.0001 - 0.00005;
-        var newLng = lng + Math.random() * 0.0001 - 0.00005;
-        var newSpeed = speed + Math.random() * 1.0 - 0.5;
-        if(newSpeed < 0.0) newSpeed = 0.0;
-        var newLean = lean + Math.random() * 1.0 - 0.5;
-        if(newLean < -30) newLean = -30;
-        if(newLean > 30) newLean = 30;
-
-        addPoint({
-            latitude: newLat,
-            longitude: newLng,
-            leanAngle: newLean,
-            speed: newSpeed
-        });
-        lat = newLat;
-        lng = newLng;
-        speed = newSpeed;
-        lean = newLean;
-    }
+    //var lat = 54.211475;
+    //var lng = -4.6331;
+    //var speed = 25;
+    //var lean = -17.5;
+    //for(var i=0; i<50000; ++i) {
+    //    var newLat = lat + Math.random() * 0.0001 - 0.00005;
+    //    var newLng = lng + Math.random() * 0.0001 - 0.00005;
+    //    var newSpeed = speed + Math.random() * 1.0 - 0.5;
+    //    if(newSpeed < 0.0) newSpeed = 0.0;
+    //    var newLean = lean + Math.random() * 1.0 - 0.5;
+    //    if(newLean < -30) newLean = -30;
+    //    if(newLean > 30) newLean = 30;
+    //
+    //    addPoint({
+    //        latitude: newLat,
+    //        longitude: newLng,
+    //        leanAngle: newLean,
+    //        speed: newSpeed
+    //    });
+    //    lat = newLat;
+    //    lng = newLng;
+    //    speed = newSpeed;
+    //    lean = newLean;
+    //}
 
     return points;
 };
@@ -1100,3 +1118,26 @@ GuardianAngel.prototype.rgbToString = function(r, g, b) {
     return "#" + componentToHex(r) + componentToHex(g) + componentToHex(b);
 };
 
+/**
+ * setupMapOptionsPanel
+ * --------------------
+ * Sets up the options panel that is shown as an overlay on the map.
+ */
+GuardianAngel.prototype.setupMapOptionsPanel = function() {
+    this.showMap(GuardianAngel.MapType.LEAN);  // TODO: Remove this
+    this.swiper.slideTo(GuardianAngel.Slide.RIDE_INFO);  // TODO: Remove this
+
+    var that = this;
+
+    // Event called when the lean / speed radio buttons are clicked.
+    // We show the chosen map-type...
+    $(".map-lean-or-speed").click(function(e) {
+        var mapType = that.getSetting("map-options-map-type", "radio");
+        if(mapType === "lean") {
+            that.showMap(GuardianAngel.MapType.LEAN);
+        }
+        if(mapType === "speed") {
+            that.showMap(GuardianAngel.MapType.SPEED);
+        }
+    });
+};

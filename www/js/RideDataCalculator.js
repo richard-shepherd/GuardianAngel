@@ -43,7 +43,7 @@ function RideDataCalculator(params) {
         sampleSpeedMS: 50,
 
         // Number of samples over which we perform a moving average (if the samples are volatile)...
-        numberSamples: 12,
+        numberSamples: 10,
 
         // Raise the alert callback if this angle is exceeded...
         alertAngle: 60.0,
