@@ -577,7 +577,6 @@ GuardianAngel.prototype.showMap = function(mapType) {
     //points = this.createTestPoints(); // TODO: Remove this!
 
     var numPoints = points.length;
-    $("#map-num-points").text(numPoints);
     if(numPoints === 0) {
         // There are no points recorded, so there is nothing to show...
         return;
@@ -585,11 +584,8 @@ GuardianAngel.prototype.showMap = function(mapType) {
 
     // We draw the lines...
     var numPointsPlotted = 0;
-    var pointIndexElement = $("#map-point-index");
     var previousPoint = points[0];
     for(var i=1; i<numPoints; ++i) {
-        pointIndexElement.text(i);
-
         var newPoint = points[i];
         if(!this.mapSignificantChange(previousPoint, newPoint) && i != numPoints-1) {
             // There has been no significant change from the previous point
