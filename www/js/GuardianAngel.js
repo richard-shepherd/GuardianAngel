@@ -11,6 +11,7 @@
 // TODO: Lean seems to lag corners (which I suppose it would with the moving average). Turn down the averaging?
 // TODO: Is it possible to show less precision in the map when we are zoomed out further?
 // TODO: Change minimum zoom code: only set bounds if min-max > some distance, e.g. 200m
+// TODO: "Share" or email ride to yourself. Maybe have a page on the computer that acts like a server.
 
 /**
  * MinMaxRideData
@@ -66,7 +67,12 @@ function GuardianAngel() {
         this.mapSignificantSpeedDelta = 2.0;  // meters per second
         this.mapSignificantDistanceMetersSquared = this.mapSignificantDistanceMeters * this.mapSignificantDistanceMeters;
         this.metersPerDegreeOfLatitude = 111304.0;
-        this.metersPerDegreeOfLongitude = 65575.0;
+        this.metersPerDegreeOfLongitude = 65575.0; // TODO: Calculate this more accurately
+
+        // For drawing the map...
+        this.map = null;
+        this.mapRedrawTimer = null;
+        this.pointsPerMap = 25;
 
         // We hold the last lean-angle shown in the dial, and a movement tolerance. This
         // avoids redrawing the dial for small movements...
@@ -565,16 +571,18 @@ GuardianAngel.prototype.stopRide = function() {
     startButtonElement.css("background-color", "red");
 
     // We show the ride map and move to the ride-info slide which shows it...
-    this.showMap();
+    this.showMap_DEPRECATED();
     this.swiper.slideTo(GuardianAngel.Slide.RIDE_INFO);
 };
 
 /**
- * showMap
+ * showMap_DEPRECATED
  * -------
  * Displays a map showing the ride route, with lean and speed info.
  */
-GuardianAngel.prototype.showMap = function() {
+GuardianAngel.prototype.showMap_DEPRECATED = function() {
+    var that = this;
+
     // We find the center of the map and create the map...
     var centerLatitude = (this.minMaxRideData.minLatitude + this.minMaxRideData.maxLatitude) / 2.0;
     var centerLongitude = (this.minMaxRideData.minLongitude + this.minMaxRideData.maxLongitude) / 2.0;
@@ -588,6 +596,9 @@ GuardianAngel.prototype.showMap = function() {
         panControl: false,
         click: function(e) {
             map.removeOverlays();
+        },
+        bounds_changed: function() {
+            that.onMapBoundsChanged();
         }
     });
 
@@ -596,7 +607,7 @@ GuardianAngel.prototype.showMap = function() {
 
     // We draw lines from each point to the next, color coding it by lean-angle or speed...
     var points = this.rideDatas;
-    points = this.createTestPoints(); // TODO: Remove this!
+    //points = this.createTestPoints(); // TODO: Remove this!
 
     var numPoints = points.length;
     if(numPoints === 0) {
@@ -630,6 +641,74 @@ GuardianAngel.prototype.showMap = function() {
         map.fitLatLngBounds(bounds);
     }
 };
+
+/**
+ * showMap
+ * -------
+ * Shows the ride route and information on a map.
+ */
+GuardianAngel.prototype.showMap = function() {
+    var that = this;
+
+    // We find the center of the map and create the map...
+    var centerLatitude = (this.minMaxRideData.minLatitude + this.minMaxRideData.maxLatitude) / 2.0;
+    var centerLongitude = (this.minMaxRideData.minLongitude + this.minMaxRideData.maxLongitude) / 2.0;
+    this.map = new GMaps({
+        div: "#map",
+        lat: centerLatitude,
+        lng: centerLongitude,
+        scaleControl: false,
+        zoomControl: false,
+        streetViewControl: false,
+        panControl: false,
+        click: function(e) {
+            map.removeOverlays();
+        },
+        bounds_changed: function() {
+            that.onMapBoundsChanged();
+        }
+    });
+};
+
+/**
+ * onMapBoundsChanged
+ * ------------------
+ * Called when the bounds of the map have changed, ie when it has been zoomed or moved.
+ */
+GuardianAngel.prototype.onMapBoundsChanged = function() {
+    // We want to redraw the map, but only when zooming / moving has finished.
+    // So we give it a short time before we redraw...
+    var that = this;
+    if(this.mapRedrawTimer !== null) {
+        clearTimeout(timer);
+    }
+    this.mapRedrawTimer = setTimeout(function() {
+        that.redrawMap();
+    }, 500);
+};
+
+/**
+ * redrawMap
+ * ---------
+ * Draws the ride route on the map.
+ */
+GuardianAngel.prototype.redrawMap = function() {
+    // There may be a very large number of points in the route, and depending
+    // on the scale of the map we may not want to draw all of them:
+    //
+    // - We do not want to show any points that are outside the bounds of the map.
+    //
+    // - When zoomed out, we draw a rough outline of the ride, getting more detailed
+    //   as we zoom in.
+    //
+    // To do this, we always draw (roughly) the same number of lines regardless of
+    // the zoom level. When zoomed out, this means that we draw an approximate line,
+    // using aggregated information from a number of points in the ride.
+
+    // We find the bounds of the map...
+};
+
+
 
 /**
  * getSelectedMapType
@@ -1145,7 +1224,7 @@ GuardianAngel.prototype.rgbToString = function(r, g, b) {
  * Sets up the options panel that is shown as an overlay on the map.
  */
 GuardianAngel.prototype.setupMapOptionsPanel = function() {
-    this.showMap();  // TODO: Remove this
+    this.showMap_DEPRECATED();  // TODO: Remove this
     this.swiper.slideTo(GuardianAngel.Slide.RIDE_INFO);  // TODO: Remove this
 
     var that = this;
@@ -1153,6 +1232,6 @@ GuardianAngel.prototype.setupMapOptionsPanel = function() {
     // Event called when the lean / speed radio buttons are clicked.
     // We show the chosen map-type...
     $(".map-lean-or-speed").click(function(e) {
-        that.showMap();
+        that.showMap_DEPRECATED();
     });
 };
