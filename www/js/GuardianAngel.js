@@ -1224,8 +1224,8 @@ GuardianAngel.prototype.rgbToString = function(r, g, b) {
  * Sets up the options panel that is shown as an overlay on the map.
  */
 GuardianAngel.prototype.setupMapOptionsPanel = function() {
-    this.showMap_DEPRECATED();  // TODO: Remove this
-    this.swiper.slideTo(GuardianAngel.Slide.RIDE_INFO);  // TODO: Remove this
+    //this.showMap_DEPRECATED();  // TODO: Remove this
+    //this.swiper.slideTo(GuardianAngel.Slide.RIDE_INFO);  // TODO: Remove this
 
     var that = this;
 

@@ -219,10 +219,10 @@ body {
 #map-options {
     position: absolute;
     top: 18vh;
-    left: 75vw;
+    left: 73vw;
     z-index: 2;
     display: block;
-    width: 16vw;
+    width: 18vw;
     color: #fff;
     font-size: 2vw;
     line-height: 3vw;
