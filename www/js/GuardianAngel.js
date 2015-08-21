@@ -12,6 +12,8 @@
 // TODO: Is it possible to show less precision in the map when we are zoomed out further?
 // TODO: Change minimum zoom code: only set bounds if min-max > some distance, e.g. 200m
 // TODO: "Share" or email ride to yourself. Maybe have a page on the computer that acts like a server.
+// TODO: Map options panel is too small on a phone
+// TODO: Distance before drawing: Should add cumulative distance. (Not distance between previous, current.)
 
 /**
  * MinMaxRideData
@@ -607,7 +609,7 @@ GuardianAngel.prototype.showMap_DEPRECATED = function() {
 
     // We draw lines from each point to the next, color coding it by lean-angle or speed...
     var points = this.rideDatas;
-    //points = this.createTestPoints(); // TODO: Remove this!
+    points = this.createTestPoints(); // TODO: Remove this!
 
     var numPoints = points.length;
     if(numPoints === 0) {
@@ -627,7 +629,7 @@ GuardianAngel.prototype.showMap_DEPRECATED = function() {
             continue;
         }
 
-        this.addLineToMap(map, previousPoint, newPoint, mapType);
+        this.addLineToMap_DEPRECATED(map, previousPoint, newPoint, mapType);
         numPointsPlotted++;
         previousPoint = newPoint;
     }
@@ -678,21 +680,22 @@ GuardianAngel.prototype.showMap = function() {
 GuardianAngel.prototype.onMapBoundsChanged = function() {
     // We want to redraw the map, but only when zooming / moving has finished.
     // So we give it a short time before we redraw...
-    var that = this;
     if(this.mapRedrawTimer !== null) {
-        clearTimeout(timer);
+        clearTimeout(this.mapRedrawTimer);
     }
+
+    var that = this;
     this.mapRedrawTimer = setTimeout(function() {
-        that.redrawMap();
+        that.redrawMapRoute();
     }, 500);
 };
 
 /**
- * redrawMap
- * ---------
+ * redrawMapRoute
+ * --------------
  * Draws the ride route on the map.
  */
-GuardianAngel.prototype.redrawMap = function() {
+GuardianAngel.prototype.redrawMapRoute = function() {
     // There may be a very large number of points in the route, and depending
     // on the scale of the map we may not want to draw all of them:
     //
@@ -706,9 +709,88 @@ GuardianAngel.prototype.redrawMap = function() {
     // using aggregated information from a number of points in the ride.
 
     // We find the bounds of the map...
+    var bounds = this.map.getBounds();
+    var sw = bounds.getSouthWest();
+    var ne = bounds.getNorthEast();
+    var minLatitude = sw.lat();
+    var maxLatitude = ne.lat();
+    var minLongitude= sw.lng();
+    var maxLongitude = ne.lng();
+
+    // We find the distance we need to have between points to show the required
+    // number of points per map. (We hold this number squared, to avoid having to
+    // take a square root.)
+    var mapHeightMeters = (maxLatitude - minLatitude) * this.metersPerDegreeOfLatitude;
+    var mapWidthMeters = (maxLongitude - minLongitude) * this.metersPerDegreeOfLongitude;
+    var boundsMetersSquared = mapHeightMeters * mapHeightMeters + mapWidthMeters * mapWidthMeters;
+    var significantDistanceSquared = boundsMetersSquared / (this.pointsPerMap * this.pointsPerMap);
+
+    // We find the type of map to show...
+    var mapType = this.getSelectedMapType();
+
+    // As we are not drawing all points, we keep an eye on the last point we drew,
+    // along with the maximum speed and lean seen since that point...
+    var lastDrawnPoint = null;
+
+    // We go through the points to show...
+    var points = this.rideDatas;
+    var numPoints = points.length;
+    for(var i=1; i<numPoints; ++i) {
+        var startPoint = points[i-1];
+        var endPoint = points[i];
+
+        var startLatitude = startPoint.latitude;
+        var startLongitude = startPoint.longitude;
+        var endLatitude = endPoint.latitude;
+        var endLongitude = endPoint.longitude;
+
+        // Is this line within the bounds of the map?
+        var startInBounds = (startLatitude >= minLatitude && startLatitude <= maxLatitude && startLongitude >= minLongitude && startLongitude <= maxLongitude);
+        var endInBounds = (endLatitude >= minLatitude && endLatitude <= maxLatitude && endLongitude >= minLongitude && endLongitude <= maxLongitude);
+        if(!startInBounds && !endInBounds) {
+            // The line is not on the map...
+            continue;
+        }
+
+        if(!startInBounds && endInBounds) {
+            // The start is outside the map, but the end is in it. So this is a line
+            // coming into the map for the first time. We draw this...
+            MapUtils.addLineToMap(
+                this.map,
+                startLatitude, startLongitude,
+                endLatitude, endLongitude,
+                endPoint.speed, endPoint.leanAngle,
+                mapType);
+
+            lastDrawnPoint = new LastDrawnPointInfo(endPoint);
+            continue;
+        }
+
+        if(startInBounds && !endInBounds) {
+            // The start is in the map, but the end is outside the map. So this is a
+            // line leaving the map. We draw a line from the last point drawn...
+            if(lastDrawnPoint === null) {
+                lastDrawnPoint = new LastDrawnPointInfo(startPoint);
+            }
+
+            lastDrawnPoint.updateMaxValues(endPoint.speed, endPoint.leanAngle);
+            MapUtils.addLineToMap(
+                this.map,
+                lastDrawnPoint.latitude, lastDrawnPoint.longitude,
+                endLatitude, endLongitude,
+                lastDrawnPoint.getSpeed(), lastDrawnPoint.getLeanAngle(),
+                mapType);
+
+            // We set the last drawn point to null, as we only hold this for points in the map...
+            lastDrawnPoint = null;
+            continue;
+        }
+
+
+
+    }
+
 };
-
-
 
 /**
  * getSelectedMapType
@@ -771,11 +853,11 @@ GuardianAngel.prototype.mapSignificantChange = function(point1, point2) {
 };
 
 /**
- * addLineToMap
- * ------------
+ * addLineToMap_DEPRECATED
+ * -----------------------
  * Adds a line to the map, coloring it according to lean angle or speed.
  */
-GuardianAngel.prototype.addLineToMap = function(map, startPoint, endPoint, mapType) {
+GuardianAngel.prototype.addLineToMap_DEPRECATED = function(map, startPoint, endPoint, mapType) {
     var midLatitude = (startPoint.latitude + endPoint.latitude) / 2.0;
     var midLongitude = (startPoint.longitude + endPoint.longitude) / 2.0;
     var speedInfo = this.convertSpeed(endPoint.speed);
@@ -784,9 +866,9 @@ GuardianAngel.prototype.addLineToMap = function(map, startPoint, endPoint, mapTy
     // depending on the map type.
     var color = "#0000ff";
     if(mapType === GuardianAngel.MapType.LEAN) {
-        color = this.getLeanColor(endPoint.leanAngle, this.minMaxRideData.maxLeftLean, this.minMaxRideData.maxRightLean);
+        color = this.getLeanColor_DEPRECATED(endPoint.leanAngle, this.minMaxRideData.maxLeftLean, this.minMaxRideData.maxRightLean);
     } else if(mapType === GuardianAngel.MapType.SPEED) {
-        color = this.getSpeedColor(endPoint.speed, this.minMaxRideData.maxSpeed);
+        color = this.getSpeedColor_DEPRECATED(endPoint.speed, this.minMaxRideData.maxSpeed);
     }
 
     // We create a message to show when this line is clicked...
@@ -815,12 +897,12 @@ GuardianAngel.prototype.addLineToMap = function(map, startPoint, endPoint, mapTy
 };
 
 /**
- * getLeanColor
+ * getLeanColor_DEPRECATED
  * ------------
  * Returns a color representing the lean angle.
  * 0 = blue, max-left = green, max-right = red
  */
-GuardianAngel.prototype.getLeanColor = function(leanAngle, maxLeftLean, maxRightLean) {
+GuardianAngel.prototype.getLeanColor_DEPRECATED = function(leanAngle, maxLeftLean, maxRightLean) {
     if(leanAngle === 0.0) return "#0000ff";
 
     // Is it a left or right lean?
@@ -832,24 +914,24 @@ GuardianAngel.prototype.getLeanColor = function(leanAngle, maxLeftLean, maxRight
         fractionOfMax = absLeanAngle / maxLeftLean;
         blue = 255 - 255 * fractionOfMax;
         green = 255 * fractionOfMax;
-        return this.rgbToString(0, green, blue);
+        return this.rgbToString_DEPRECATED(0, green, blue);
     } else {
         // It's a right lean...
         if(maxRightLean === 0.0) return "#0000ff";
         fractionOfMax = absLeanAngle / maxRightLean;
         blue = 255 - 255 * fractionOfMax;
         red = 255 * fractionOfMax;
-        return this.rgbToString(red, 0, blue);
+        return this.rgbToString_DEPRECATED(red, 0, blue);
     }
 };
 
 /**
- * getSpeedColor
+ * getSpeedColor_DEPRECATED
  * -------------
  * Returns a color representing the speed.
  * 0 = blue, max-speed = red.
  */
-GuardianAngel.prototype.getSpeedColor = function(speed, maxSpeed) {
+GuardianAngel.prototype.getSpeedColor_DEPRECATED = function(speed, maxSpeed) {
     if(maxSpeed === 0.0) {
         return "#0000ff";
     }
@@ -857,7 +939,7 @@ GuardianAngel.prototype.getSpeedColor = function(speed, maxSpeed) {
     var fractionOfMax = speed / maxSpeed;
     var blue = 255 - 255 * fractionOfMax;
     var red = 255 * fractionOfMax;
-    return this.rgbToString(red, 0, blue);
+    return this.rgbToString_DEPRECATED(red, 0, blue);
 };
 
 // TODO: Remove this!
@@ -1203,11 +1285,11 @@ GuardianAngel.prototype.getSetting = function(name, type) {
 };
 
 /**
- * rgbToString
+ * rgbToString_DEPRECATED
  * -----------
  * Converts RGB values to a color string.
  */
-GuardianAngel.prototype.rgbToString = function(r, g, b) {
+GuardianAngel.prototype.rgbToString_DEPRECATED = function(r, g, b) {
     function componentToHex(c) {
         var hex = c.toString(16);
         return hex.length == 1 ? "0" + hex : hex;
@@ -1224,8 +1306,8 @@ GuardianAngel.prototype.rgbToString = function(r, g, b) {
  * Sets up the options panel that is shown as an overlay on the map.
  */
 GuardianAngel.prototype.setupMapOptionsPanel = function() {
-    //this.showMap_DEPRECATED();  // TODO: Remove this
-    //this.swiper.slideTo(GuardianAngel.Slide.RIDE_INFO);  // TODO: Remove this
+    this.showMap_DEPRECATED();  // TODO: Remove this
+    this.swiper.slideTo(GuardianAngel.Slide.RIDE_INFO);  // TODO: Remove this
 
     var that = this;
 
